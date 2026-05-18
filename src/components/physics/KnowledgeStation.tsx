@@ -378,7 +378,6 @@ export default function KnowledgeStation({ chapters, lawName, lawColor }: Knowle
   // Ensure speechSynthesis is ready
   useEffect(() => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
-      // Chrome bug: voices may not be available until after onvoiceschanged
       const voices = window.speechSynthesis.getVoices();
       if (voices.length > 0) {
         synthReadyRef.current = true;
@@ -395,6 +394,34 @@ export default function KnowledgeStation({ chapters, lawName, lawColor }: Knowle
     }
   }, []);
 
+  // Find best Chinese male voice
+  const getChineseMaleVoice = useCallback(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return null;
+    const voices = window.speechSynthesis.getVoices();
+
+    // Priority 1: zh-CN male voices (some TTS engines mark gender)
+    const zhCnMale = voices.find(v =>
+      v.lang === 'zh-CN' && (v.name.toLowerCase().includes('male') || v.name.includes('男'))
+    );
+    if (zhCnMale) return zhCnMale;
+
+    // Priority 2: any Chinese male voice
+    const zhMale = voices.find(v =>
+      v.lang.startsWith('zh') && (v.name.toLowerCase().includes('male') || v.name.includes('男'))
+    );
+    if (zhMale) return zhMale;
+
+    // Priority 3: zh-CN voices (typically male default)
+    const zhCn = voices.find(v => v.lang === 'zh-CN');
+    if (zhCn) return zhCn;
+
+    // Priority 4: any Chinese voice
+    const zh = voices.find(v => v.lang.startsWith('zh'));
+    if (zh) return zh;
+
+    return null;
+  }, []);
+
   const speakText = useCallback((text: string, onEnd?: () => void) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
       onEnd?.();
@@ -406,14 +433,13 @@ export default function KnowledgeStation({ chapters, lawName, lawColor }: Knowle
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'zh-CN';
-    utterance.rate = 0.9;
-    utterance.pitch = 1.1;
+    utterance.rate = 1.2;   // 1.2x normal speed
+    utterance.pitch = 0.9;  // Lower pitch for male voice feel
+    utterance.volume = 1.0;
 
-    // Try to find a Chinese voice
-    const voices = window.speechSynthesis.getVoices();
-    const zhVoice = voices.find(v => v.lang.startsWith('zh'));
-    if (zhVoice) {
-      utterance.voice = zhVoice;
+    const voice = getChineseMaleVoice();
+    if (voice) {
+      utterance.voice = voice;
     }
 
     utterance.onend = () => {
@@ -425,7 +451,7 @@ export default function KnowledgeStation({ chapters, lawName, lawColor }: Knowle
     };
 
     window.speechSynthesis.speak(utterance);
-  }, []);
+  }, [getChineseMaleVoice]);
 
   const startProgressTimer = useCallback((durationMs: number, onComplete?: () => void) => {
     if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
@@ -447,10 +473,10 @@ export default function KnowledgeStation({ chapters, lawName, lawColor }: Knowle
     }, stepMs);
   }, []);
 
-  // Estimate speech duration based on text length (Chinese ~4 chars/sec at rate 0.9)
+  // Estimate speech duration based on text length (Chinese ~4 chars/sec at rate 1.0, so 4.8 at 1.2)
   const estimateDuration = useCallback((text: string) => {
     const charCount = text.length;
-    const rate = 0.9;
+    const rate = 1.2;
     const charsPerSecond = 4 * rate;
     return (charCount / charsPerSecond) * 1000;
   }, []);
@@ -513,7 +539,6 @@ export default function KnowledgeStation({ chapters, lawName, lawColor }: Knowle
   useEffect(() => {
     if (pageAutoNextRef.current) {
       pageAutoNextRef.current = false;
-      // Short delay before starting next page
       const timer = setTimeout(() => {
         handlePlay();
       }, 800);
@@ -529,23 +554,8 @@ export default function KnowledgeStation({ chapters, lawName, lawColor }: Knowle
     };
   }, [stopSpeaking]);
 
-  const chapterLabels = ['第1节', '第2节', '第3节', '第4节'];
-
   return (
-    <div className="space-y-4">
-      {/* Page indicator */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h3 className="text-lg font-bold text-gray-800">{chapter.title}</h3>
-          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium text-white ${lawColor}`}>
-            {chapterLabels[currentPage]}
-          </span>
-        </div>
-        <span className="text-sm text-gray-400">
-          {currentPage + 1} / {chapters.length}
-        </span>
-      </div>
-
+    <div className="space-y-3">
       {/* Main content: Left video + Right text */}
       <div className="flex gap-5">
         {/* Left: Video animation */}
@@ -568,48 +578,6 @@ export default function KnowledgeStation({ chapters, lawName, lawColor }: Knowle
                   className="h-full bg-blue-500 rounded-full transition-all duration-100"
                   style={{ width: `${progress}%` }}
                 />
-              </div>
-            </div>
-
-            {/* Controls */}
-            <div className="px-4 pb-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handlePlayPause}
-                  className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center hover:bg-blue-600 transition-colors shadow-md"
-                >
-                  {isPlaying ? (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <rect x="6" y="4" width="4" height="16" rx="1" />
-                      <rect x="14" y="4" width="4" height="16" rx="1" />
-                    </svg>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <polygon points="5,3 19,12 5,21" />
-                    </svg>
-                  )}
-                </button>
-                <span className="text-xs text-gray-400">
-                  {isPlaying ? '播报中...' : '点击播放'}
-                </span>
-              </div>
-
-              {/* Page navigation */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handlePrevPage}
-                  disabled={currentPage === 0}
-                  className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-600 text-xs font-medium hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  上一页
-                </button>
-                <button
-                  onClick={handleNextPage}
-                  disabled={currentPage === chapters.length - 1}
-                  className="px-3 py-1.5 rounded-lg bg-blue-500 text-white text-xs font-medium hover:bg-blue-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  下一页
-                </button>
               </div>
             </div>
           </div>
@@ -642,6 +610,47 @@ export default function KnowledgeStation({ chapters, lawName, lawColor }: Knowle
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Bottom controls: Prev | Play/Pause | Next */}
+      <div className="flex items-center justify-between px-2">
+        <button
+          onClick={handlePrevPage}
+          disabled={currentPage === 0}
+          className="px-5 py-2 rounded-lg bg-white border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          上一页
+        </button>
+
+        <button
+          onClick={handlePlayPause}
+          className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center hover:bg-blue-600 transition-colors shadow-lg"
+        >
+          {isPlaying ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="6" y="4" width="4" height="16" rx="1" />
+              <rect x="14" y="4" width="4" height="16" rx="1" />
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5,3 19,12 5,21" />
+            </svg>
+          )}
+        </button>
+
+        <button
+          onClick={handleNextPage}
+          disabled={currentPage === chapters.length - 1}
+          className="px-5 py-2 rounded-lg bg-blue-500 text-white text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+        >
+          下一页
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
       </div>
     </div>
   );
