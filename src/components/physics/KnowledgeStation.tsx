@@ -7,13 +7,38 @@ interface KnowledgeStationProps {
   chapters: ChapterContent[];
   lawName: string;
   lawColor: string;
+  lawKey: string;
 }
 
+// Knowledge cards data for each law
+const knowledgeCardsData: Record<string, { background: string; derivation: string; conclusion: string; application: string }> = {
+  archimedes: {
+    background: '古希腊国王怀疑工匠在纯金王冠中掺银，却无法测量不规则物体的体积。阿基米德在洗澡时观察到水溢出浴缸，灵光一闪发现了排水法测体积的原理，由此揭开了浮力与排开液体重力之间的关系。',
+    derivation: '① 设柱体底面积S、高h，浸没在液体中：V排=Sh\n② 下表面受向上压力F上=ρ液gh下S，上表面受向下压力F下=ρ液gh上S\n③ F浮=F上-F下=ρ液gS(h下-h上)=ρ液gSh=ρ液gV排\n④ 此推导对任意形状物体均成立',
+    conclusion: '核心公式：F浮=ρ液gV排\n\n关键理解：\n① "浸在"包括完全浸没和部分浸入\n② 浮力只与液体密度和排开体积有关，与物体质量、密度无关\n③ 一斤铁和一斤棉花完全浸没时浮力相同',
+    application: '🚢 轮船：空心结构增大V排，使F浮=G船而漂浮\n🤖 潜水艇：调节水舱改变自重，控制浮沉\n🎈 氢气球：排开空气的重力>自重，受空气浮力升空\n🧊 密度计：利用漂浮时F浮=G，V排反比于ρ液',
+  },
+  ohm: {
+    background: '电路中的灯泡为什么有的亮有的暗？电流大小由什么决定？德国物理学家欧姆通过大量实验，探索电流、电压、电阻三者之间的定量关系，最终发现了电学最基本的定律。',
+    derivation: '① 控制变量法：保持电阻不变，改变电压→电流与电压成正比\n② 保持电压不变，改变电阻→电流与电阻成反比\n③ 综合两组实验：I∝U，I∝1/R\n④ 得出结论：I=U/R',
+    conclusion: '核心公式：I=U/R\n\n关键理解：\n① I、U、R必须对应同一段电路、同一时刻\n② 电阻是导体本身的性质，不随U、I变化\n③ 不能说"R与U成正比"，R由材料、长度、截面积决定',
+    application: '🔌 家用电路：根据I=P/U选导线和保险丝\n📱 手机充电器：5V/2A输出体现U与I关系\n💡 LED灯：串联限流电阻防止过流烧毁\n🏠 用电安全：根据欧姆定律设计漏电保护',
+  },
+  hooke: {
+    background: '弹簧为什么能拉长又能恢复？蹦床为什么能弹飞人？17世纪英国科学家罗伯特·胡克通过大量弹簧实验，发现了弹力与形变量之间的正比关系，这就是胡克定律。',
+    derivation: '① 在弹簧下挂不同数量钩码，记录弹力F和伸长量x\n② 绘制F-x图像，发现过原点的直线\n③ 直线斜率k为劲度系数，反映弹簧"软硬"\n④ 得出：F=kx（在弹性限度内）',
+    conclusion: '核心公式：F=kx\n\n关键理解：\n① "弹性限度内"是前提，超限则永久形变\n② k为劲度系数，单位N/m，由弹簧本身决定\n③ k越大弹簧越硬，越难拉伸\n④ x是形变量（伸长量或压缩量），不是弹簧原长',
+    application: '⚖️ 弹簧秤：直接利用F=kx测力\n🚗 汽车减震器：弹簧缓冲路面颠簸\n🎯 弹弓/弓箭：弹性势能转化为动能\n🛏️ 弹簧床垫：利用弹性提供舒适支撑',
+  },
+};
+
 // Animated scene renderer for each chapter type
-function AnimationScene({ type, isPlaying, progress }: { type: string; isPlaying: boolean; progress: number }) {
+function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
   const timeRef = useRef(0);
+  const isPlayingRef = useRef(isPlaying);
+  useEffect(() => { isPlayingRef.current = isPlaying; });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -337,7 +362,7 @@ function AnimationScene({ type, isPlaying, progress }: { type: string; isPlaying
     };
 
     const draw = () => {
-      if (isPlaying) timeRef.current += 1;
+      if (isPlayingRef.current) timeRef.current += 1;
       ctx.clearRect(0, 0, w, h);
 
       switch (type) {
@@ -353,40 +378,54 @@ function AnimationScene({ type, isPlaying, progress }: { type: string; isPlaying
 
     draw();
     return () => cancelAnimationFrame(animFrameRef.current);
-  }, [type, isPlaying]);
+  }, [type]);
 
   return (
     <canvas
       ref={canvasRef}
-      width={560}
-      height={360}
+      width={800}
+      height={420}
       className="w-full rounded-xl bg-white border border-blue-100"
     />
   );
 }
 
-export default function KnowledgeStation({ chapters, lawName, lawColor }: KnowledgeStationProps) {
+export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }: KnowledgeStationProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [mergedChapters, setMergedChapters] = useState<ChapterContent[]>(chapters);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const synthReadyRef = useRef(false);
   const pageAutoNextRef = useRef(false);
 
-  const chapter = chapters[currentPage];
-
-  // Ensure speechSynthesis is ready
+  // Load editor data from localStorage and merge
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      const voices = window.speechSynthesis.getVoices();
-      if (voices.length > 0) {
-        synthReadyRef.current = true;
+    const stored = localStorage.getItem('physics-editor-data');
+    if (stored) {
+      try {
+        const editData = JSON.parse(stored);
+        const edited = editData[lawKey];
+        if (edited && Array.isArray(edited)) {
+          // Merge: editor data overrides default chapters
+          const merged = chapters.map((ch, i) => {
+            if (edited[i]) {
+              return {
+                ...ch,
+                text: edited[i].text ?? ch.text,
+                speech: edited[i].speech ?? ch.speech,
+              };
+            }
+            return ch;
+          });
+          setMergedChapters(merged);
+        }
+      } catch {
+        // ignore parse errors, use defaults
       }
-      window.speechSynthesis.onvoiceschanged = () => {
-        synthReadyRef.current = true;
-      };
     }
-  }, []);
+  }, [chapters, lawKey]);
+
+  const chapter = mergedChapters[currentPage];
 
   const stopSpeaking = useCallback(() => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -394,12 +433,11 @@ export default function KnowledgeStation({ chapters, lawName, lawColor }: Knowle
     }
   }, []);
 
-  // Find best Chinese male voice
   const getChineseMaleVoice = useCallback(() => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return null;
     const voices = window.speechSynthesis.getVoices();
 
-    // Priority 1: zh-CN male voices (some TTS engines mark gender)
+    // Priority 1: zh-CN male voices
     const zhCnMale = voices.find(v =>
       v.lang === 'zh-CN' && (v.name.toLowerCase().includes('male') || v.name.includes('男'))
     );
@@ -428,13 +466,12 @@ export default function KnowledgeStation({ chapters, lawName, lawColor }: Knowle
       return;
     }
 
-    // Cancel any ongoing speech
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'zh-CN';
-    utterance.rate = 1.2;   // 1.2x normal speed
-    utterance.pitch = 0.9;  // Lower pitch for male voice feel
+    utterance.rate = 1.2;
+    utterance.pitch = 0.9;
     utterance.volume = 1.0;
 
     const voice = getChineseMaleVoice();
@@ -473,7 +510,6 @@ export default function KnowledgeStation({ chapters, lawName, lawColor }: Knowle
     }, stepMs);
   }, []);
 
-  // Estimate speech duration based on text length (Chinese ~4 chars/sec at rate 1.0, so 4.8 at 1.2)
   const estimateDuration = useCallback((text: string) => {
     const charCount = text.length;
     const rate = 1.2;
@@ -486,8 +522,7 @@ export default function KnowledgeStation({ chapters, lawName, lawColor }: Knowle
     const duration = estimateDuration(chapter.speech);
 
     speakText(chapter.speech, () => {
-      // Speech ended, auto-advance to next page if available
-      if (currentPage < chapters.length - 1) {
+      if (currentPage < mergedChapters.length - 1) {
         pageAutoNextRef.current = true;
         setCurrentPage(prev => prev + 1);
       } else {
@@ -497,11 +532,11 @@ export default function KnowledgeStation({ chapters, lawName, lawColor }: Knowle
     });
 
     startProgressTimer(duration, () => {
-      if (currentPage >= chapters.length - 1) {
+      if (currentPage >= mergedChapters.length - 1) {
         setIsPlaying(false);
       }
     });
-  }, [chapter.speech, currentPage, chapters.length, speakText, startProgressTimer, estimateDuration]);
+  }, [chapter.speech, currentPage, mergedChapters.length, speakText, startProgressTimer, estimateDuration]);
 
   const handlePause = useCallback(() => {
     setIsPlaying(false);
@@ -530,10 +565,10 @@ export default function KnowledgeStation({ chapters, lawName, lawColor }: Knowle
   }, [currentPage, goToPage]);
 
   const handleNextPage = useCallback(() => {
-    if (currentPage < chapters.length - 1) {
+    if (currentPage < mergedChapters.length - 1) {
       goToPage(currentPage + 1);
     }
-  }, [currentPage, chapters.length, goToPage]);
+  }, [currentPage, mergedChapters.length, goToPage]);
 
   // Auto-play next page after speech ends on current page
   useEffect(() => {
@@ -554,104 +589,149 @@ export default function KnowledgeStation({ chapters, lawName, lawColor }: Knowle
     };
   }, [stopSpeaking]);
 
+  // Get knowledge cards for this law
+  const cards = knowledgeCardsData[lawKey];
+
   return (
-    <div className="space-y-3">
-      {/* Main content: Left video + Right text */}
-      <div className="flex gap-5">
-        {/* Left: Video animation */}
-        <div className="flex-1 min-w-0">
-          <div className="relative rounded-xl overflow-hidden bg-white border border-blue-100 shadow-sm">
-            <AnimationScene type={chapter.videoType} isPlaying={isPlaying} progress={progress} />
+    <div className="space-y-6">
+      {/* Main content: single page with video and text */}
+      <div className="bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
+        {/* Video animation */}
+        <div className="relative">
+          <AnimationScene type={chapter.videoType} isPlaying={isPlaying} />
+        </div>
 
-            {/* Progress bar synced with speech */}
-            <div className="px-4 pb-2 pt-1">
-              <div
-                className="w-full h-1.5 bg-gray-200 rounded-full cursor-pointer"
-                onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const pct = (x / rect.width) * 100;
-                  setProgress(pct);
-                }}
-              >
-                <div
-                  className="h-full bg-blue-500 rounded-full transition-all duration-100"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
+        {/* Progress bar - full width */}
+        <div className="px-5 py-2">
+          <div
+            className="w-full h-1.5 bg-gray-200 rounded-full cursor-pointer"
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const pct = (x / rect.width) * 100;
+              setProgress(pct);
+            }}
+          >
+            <div
+              className={`h-full rounded-full transition-all duration-100 ${lawColor}`}
+              style={{ width: `${progress}%` }}
+            />
           </div>
         </div>
 
-        {/* Right: Text content */}
-        <div className="w-[280px] shrink-0">
-          <div className="bg-white rounded-xl border border-blue-100 p-5 shadow-sm h-full">
-            <div className="flex items-center gap-2 mb-3">
-              <div className={`w-7 h-7 rounded-lg ${lawColor} text-white flex items-center justify-center text-xs font-bold shrink-0`}>
-                {currentPage + 1}
-              </div>
-              <h4 className="font-bold text-gray-800 text-sm">{chapter.title}</h4>
-            </div>
-            <p className="text-gray-600 text-sm leading-relaxed">{chapter.text}</p>
+        {/* Text content - no chapter number/title, just the text */}
+        <div className="px-6 pb-5">
+          <p className="text-gray-700 text-base leading-relaxed">{chapter.text}</p>
+        </div>
 
-            {/* Page dots */}
-            <div className="flex items-center justify-center gap-2 mt-5">
-              {chapters.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => goToPage(i)}
-                  className={`w-2.5 h-2.5 rounded-full transition-all ${
-                    i === currentPage
-                      ? 'bg-blue-500 scale-125'
-                      : 'bg-gray-300 hover:bg-gray-400'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
+        {/* Page dots */}
+        <div className="flex items-center justify-center gap-2 pb-4">
+          {mergedChapters.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => goToPage(i)}
+              className={`w-2.5 h-2.5 rounded-full transition-all ${
+                i === currentPage
+                  ? `${lawColor} scale-125`
+                  : 'bg-gray-300 hover:bg-gray-400'
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* Bottom controls: Prev | Play/Pause | Next */}
+        <div className="flex items-center justify-between px-6 pb-5">
+          <button
+            onClick={handlePrevPage}
+            disabled={currentPage === 0}
+            className="px-5 py-2 rounded-lg bg-white border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            上一页
+          </button>
+
+          <button
+            onClick={handlePlayPause}
+            className={`w-12 h-12 rounded-full text-white flex items-center justify-center transition-colors shadow-lg ${lawColor}`}
+          >
+            {isPlaying ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="4" width="4" height="16" rx="1" />
+                <rect x="14" y="4" width="4" height="16" rx="1" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5,3 19,12 5,21" />
+              </svg>
+            )}
+          </button>
+
+          <button
+            onClick={handleNextPage}
+            disabled={currentPage === mergedChapters.length - 1}
+            className={`px-5 py-2 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 ${lawColor}`}
+          >
+            下一页
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
         </div>
       </div>
 
-      {/* Bottom controls: Prev | Play/Pause | Next */}
-      <div className="flex items-center justify-between px-2">
-        <button
-          onClick={handlePrevPage}
-          disabled={currentPage === 0}
-          className="px-5 py-2 rounded-lg bg-white border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          上一页
-        </button>
+      {/* Knowledge Cards */}
+      {cards && (
+        <div>
+          <h3 className="text-base font-bold text-gray-800 mb-3">知识要点卡片</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Card 1: Background */}
+            <div className="bg-white rounded-xl border border-blue-100 p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`w-7 h-7 rounded-lg ${lawColor} text-white flex items-center justify-center text-xs`}>
+                  📜
+                </div>
+                <h4 className="font-bold text-gray-800 text-sm">定律背景</h4>
+              </div>
+              <p className="text-gray-600 text-xs leading-relaxed">{cards.background}</p>
+            </div>
 
-        <button
-          onClick={handlePlayPause}
-          className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center hover:bg-blue-600 transition-colors shadow-lg"
-        >
-          {isPlaying ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <rect x="6" y="4" width="4" height="16" rx="1" />
-              <rect x="14" y="4" width="4" height="16" rx="1" />
-            </svg>
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <polygon points="5,3 19,12 5,21" />
-            </svg>
-          )}
-        </button>
+            {/* Card 2: Derivation */}
+            <div className="bg-white rounded-xl border border-blue-100 p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`w-7 h-7 rounded-lg ${lawColor} text-white flex items-center justify-center text-xs`}>
+                  🔬
+                </div>
+                <h4 className="font-bold text-gray-800 text-sm">推导过程</h4>
+              </div>
+              <p className="text-gray-600 text-xs leading-relaxed whitespace-pre-line">{cards.derivation}</p>
+            </div>
 
-        <button
-          onClick={handleNextPage}
-          disabled={currentPage === chapters.length - 1}
-          className="px-5 py-2 rounded-lg bg-blue-500 text-white text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
-        >
-          下一页
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </button>
-      </div>
+            {/* Card 3: Conclusion */}
+            <div className="bg-white rounded-xl border border-blue-100 p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`w-7 h-7 rounded-lg ${lawColor} text-white flex items-center justify-center text-xs`}>
+                  💡
+                </div>
+                <h4 className="font-bold text-gray-800 text-sm">定律结论</h4>
+              </div>
+              <p className="text-gray-600 text-xs leading-relaxed whitespace-pre-line">{cards.conclusion}</p>
+            </div>
+
+            {/* Card 4: Application */}
+            <div className="bg-white rounded-xl border border-blue-100 p-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`w-7 h-7 rounded-lg ${lawColor} text-white flex items-center justify-center text-xs`}>
+                  🌍
+                </div>
+                <h4 className="font-bold text-gray-800 text-sm">生活应用</h4>
+              </div>
+              <p className="text-gray-600 text-xs leading-relaxed whitespace-pre-line">{cards.application}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

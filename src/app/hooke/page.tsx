@@ -329,7 +329,7 @@ export default function HookePage() {
         </div>
       </header>
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {activeTab === 'knowledge' && <KnowledgeStation chapters={hookeChapters} lawName="胡克定律" lawColor="bg-emerald-500" />}
+        {activeTab === 'knowledge' && <KnowledgeStation chapters={hookeChapters} lawName="胡克定律" lawColor="bg-emerald-500" lawKey="hooke" />}
         {activeTab === 'lab' && <HookeLab />}
         {activeTab === 'games' && <HookeGames />}
       </main>

@@ -64,6 +64,7 @@ export default function ArchimedesPage() {
             chapters={archimedesChapters}
             lawName="阿基米德定律"
             lawColor="bg-blue-500"
+            lawKey="archimedes"
           />
         )}
         {activeTab === 'lab' && <ArchimedesLab />}

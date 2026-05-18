@@ -353,7 +353,7 @@ export default function OhmPage() {
         </div>
       </header>
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {activeTab === 'knowledge' && <KnowledgeStation chapters={ohmChapters} lawName="欧姆定律" lawColor="bg-amber-500" />}
+        {activeTab === 'knowledge' && <KnowledgeStation chapters={ohmChapters} lawName="欧姆定律" lawColor="bg-amber-500" lawKey="ohm" />}
         {activeTab === 'lab' && <OhmLab />}
         {activeTab === 'games' && <OhmGames />}
       </main>
