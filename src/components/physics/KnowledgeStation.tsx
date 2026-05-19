@@ -103,200 +103,187 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
       c.fill();
       c.stroke();
 
-      if (t > 50) {
-        const textAlpha = Math.min(1, (t - 50) / 20);
-        c.fillStyle = `rgba(37, 99, 235, ${textAlpha})`;
-        c.font = `bold ${Math.min(24, cw * 0.05)}px sans-serif`;
-        c.textAlign = 'center';
-        c.fillText('Eureka!', cw * 0.5, ch * 0.15);
-      }
+      if (t > 15) {
+        const personAlpha = Math.min(1, (t - 15) / 20);
+        c.globalAlpha = personAlpha;
+        const px = cw * 0.5;
+        const py = ch * 0.3;
 
-      const personX = cw * 0.5;
-      const personY = ch * 0.42;
-      c.strokeStyle = '#1e40af';
-      c.lineWidth = 3;
-      c.beginPath();
-      c.arc(personX, personY - 20, 10, 0, Math.PI * 2);
-      c.stroke();
-      c.beginPath();
-      c.moveTo(personX, personY - 10);
-      c.lineTo(personX, personY + 15);
-      c.stroke();
-      if (t > 40) {
+        c.fillStyle = '#fde68a';
         c.beginPath();
-        c.moveTo(personX - 15, personY - 15);
-        c.lineTo(personX, personY);
-        c.lineTo(personX + 15, personY - 15);
-        c.stroke();
-      } else {
+        c.arc(px, py - 30, 12, 0, Math.PI * 2);
+        c.fill();
+
+        c.strokeStyle = '#d97706';
+        c.lineWidth = 3;
         c.beginPath();
-        c.moveTo(personX - 12, personY + 5);
-        c.lineTo(personX, personY);
-        c.lineTo(personX + 12, personY + 5);
+        c.moveTo(px, py - 18);
+        c.lineTo(px, py + 5);
         c.stroke();
+        c.beginPath();
+        c.moveTo(px - 15, py - 8);
+        c.lineTo(px + 15, py - 8);
+        c.stroke();
+        c.beginPath();
+        c.moveTo(px, py + 5);
+        c.lineTo(px - 10, py + 25);
+        c.stroke();
+        c.beginPath();
+        c.moveTo(px, py + 5);
+        c.lineTo(px + 10, py + 25);
+        c.stroke();
+
+        if (t > 25) {
+          c.fillStyle = '#ef4444';
+          c.font = 'bold 14px sans-serif';
+          c.textAlign = 'center';
+          c.fillText('Eureka!', px, py - 45);
+        }
+        c.globalAlpha = 1;
       }
     };
 
     const drawDerivation = (c: CanvasRenderingContext2D, cw: number, ch: number, t: number) => {
-      c.fillStyle = '#fefce8';
+      c.fillStyle = '#f0f9ff';
       c.fillRect(0, 0, cw, ch);
 
+      const step = Math.floor(t / 40);
+      const frac = (t % 40) / 40;
+
+      const cx = cw * 0.4;
+      const cy = ch * 0.5;
+
+      c.fillStyle = '#bfdbfe';
+      c.strokeStyle = '#3b82f6';
+      c.lineWidth = 2;
+      const rW = 50;
+      const rH = 70;
+      c.fillRect(cx - rW / 2, cy - rH / 2, rW, rH);
+      c.strokeRect(cx - rW / 2, cy - rH / 2, rW, rH);
+
       c.fillStyle = 'rgba(59, 130, 246, 0.2)';
-      c.fillRect(cw * 0.3, ch * 0.3, cw * 0.4, ch * 0.5);
-      c.strokeStyle = '#93c5fd';
+      c.fillRect(cx - rW / 2, cy - rH / 2, rW, rH);
+
+      c.strokeStyle = '#ef4444';
       c.lineWidth = 2;
-      c.strokeRect(cw * 0.3, ch * 0.3, cw * 0.4, ch * 0.5);
+      c.beginPath();
+      c.moveTo(cx, cy + rH / 2);
+      c.lineTo(cx, cy + rH / 2 + 30 + Math.sin(t * 0.05) * 3);
+      c.stroke();
+      c.fillStyle = '#ef4444';
+      c.font = '12px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('F浮', cx + 15, cy + rH / 2 + 25);
 
-      const cylinderDepth = Math.min(t / 60, 1);
-      const cylX = cw * 0.5;
-      const cylTop = ch * (0.3 + (1 - cylinderDepth) * 0.4);
-      const cylBot = ch * 0.75;
-      const cylW = cw * 0.12;
+      c.strokeStyle = '#22c55e';
+      c.beginPath();
+      c.moveTo(cx, cy - rH / 2);
+      c.lineTo(cx, cy - rH / 2 - 30 - Math.sin(t * 0.05) * 3);
+      c.stroke();
+      c.fillStyle = '#22c55e';
+      c.fillText('F上', cx + 15, cy - rH / 2 - 20);
 
-      c.fillStyle = 'rgba(251, 191, 36, 0.4)';
-      c.strokeStyle = '#d97706';
-      c.lineWidth = 2;
-      c.fillRect(cylX - cylW, cylTop, cylW * 2, cylBot - cylTop);
-      c.strokeRect(cylX - cylW, cylTop, cylW * 2, cylBot - cylTop);
-
-      if (t > 30) {
-        const arrowAlpha = Math.min(1, (t - 30) / 20);
-        c.strokeStyle = `rgba(34, 197, 94, ${arrowAlpha})`;
-        c.lineWidth = 3;
-        c.beginPath();
-        c.moveTo(cylX, cylBot);
-        c.lineTo(cylX, cylBot + 40);
-        c.stroke();
-        c.beginPath();
-        c.moveTo(cylX - 8, cylBot + 32);
-        c.lineTo(cylX, cylBot + 40);
-        c.lineTo(cylX + 8, cylBot + 32);
-        c.stroke();
-
-        c.fillStyle = `rgba(34, 197, 94, ${arrowAlpha})`;
-        c.font = '14px sans-serif';
-        c.textAlign = 'center';
-        c.fillText('F上', cylX, cylBot + 55);
-
-        c.strokeStyle = `rgba(239, 68, 68, ${arrowAlpha})`;
-        c.beginPath();
-        c.moveTo(cylX, cylTop);
-        c.lineTo(cylX, cylTop - 40);
-        c.stroke();
-        c.beginPath();
-        c.moveTo(cylX - 8, cylTop - 32);
-        c.lineTo(cylX, cylTop - 40);
-        c.lineTo(cylX + 8, cylTop - 32);
-        c.stroke();
-
-        c.fillStyle = `rgba(239, 68, 68, ${arrowAlpha})`;
-        c.fillText('F下', cylX, cylTop - 45);
-      }
-
-      if (t > 50) {
-        const fAlpha = Math.min(1, (t - 50) / 20);
-        c.fillStyle = `rgba(30, 64, 175, ${fAlpha})`;
-        c.font = `bold ${Math.min(18, cw * 0.04)}px monospace`;
-        c.textAlign = 'center';
-        c.fillText('F浮 = F上 - F下 = ρ液gV排', cw * 0.5, ch * 0.18);
-      }
-
-      if (t > 15) {
-        c.fillStyle = '#6b7280';
-        c.font = '12px sans-serif';
+      if (step >= 1) {
+        c.fillStyle = '#1e40af';
+        c.font = 'bold 13px sans-serif';
         c.textAlign = 'left';
-        c.fillText('S', cylX + cylW + 5, (cylTop + cylBot) / 2);
-        c.fillText('h', cylX - cylW - 15, (cylTop + cylBot) / 2);
+        c.fillText('① V排 = S × h', cw * 0.65, ch * 0.2);
       }
+      if (step >= 2) {
+        c.fillText('② F上 = ρ液gh下S', cw * 0.65, ch * 0.35);
+        c.fillText('   F下 = ρ液gh上S', cw * 0.65, ch * 0.45);
+      }
+      if (step >= 3) {
+        c.fillText('③ F浮 = ρ液gS(h下-h上)', cw * 0.65, ch * 0.6);
+      }
+      if (step >= 4) {
+        c.fillStyle = '#dc2626';
+        c.font = 'bold 15px sans-serif';
+        c.fillText('F浮 = ρ液gV排', cw * 0.65, ch * 0.78);
+      }
+
+      c.fillStyle = '#94a3b8';
+      c.font = '11px sans-serif';
+      c.textAlign = 'left';
+      c.fillText('S', cx + rW / 2 + 5, cy + 3);
+      c.fillText('h', cx - rW / 2 - 15, cy);
+
+      const wSurf = cy - rH / 2 - 40;
+      c.strokeStyle = 'rgba(59, 130, 246, 0.4)';
+      c.setLineDash([4, 4]);
+      c.beginPath();
+      c.moveTo(cw * 0.1, wSurf);
+      c.lineTo(cw * 0.55, wSurf);
+      c.stroke();
+      c.setLineDash([]);
     };
 
     const drawConclusion = (c: CanvasRenderingContext2D, cw: number, ch: number, t: number) => {
-      c.fillStyle = '#f0fdf4';
+      c.fillStyle = '#eff6ff';
       c.fillRect(0, 0, cw, ch);
 
-      const scale = Math.min(1, t / 30);
-      c.fillStyle = `rgba(30, 64, 175, ${scale})`;
-      c.font = `bold ${Math.min(32, cw * 0.06) * scale}px monospace`;
+      c.fillStyle = '#1e40af';
+      c.font = 'bold 18px sans-serif';
       c.textAlign = 'center';
-      c.fillText('F浮 = ρ液gV排', cw * 0.5, ch * 0.2);
+      c.fillText('阿基米德定律', cw / 2, ch * 0.12);
 
-      const objects = [
-        { emoji: '🧊', label: '铁块', x: cw * 0.2 },
-        { emoji: '🪵', label: '木块', x: cw * 0.5 },
-        { emoji: '🎈', label: '气球', x: cw * 0.8 },
+      const pulse = 1 + Math.sin(t * 0.08) * 0.03;
+      c.save();
+      c.translate(cw / 2, ch * 0.35);
+      c.scale(pulse, pulse);
+      c.fillStyle = '#dbeafe';
+      c.beginPath();
+      c.roundRect(-160, -25, 320, 50, 12);
+      c.fill();
+      c.fillStyle = '#1e3a8a';
+      c.font = 'bold 20px sans-serif';
+      c.fillText('F浮 = G排 = ρ液gV排', 0, 8);
+      c.restore();
+
+      const showIdx = Math.floor(t / 30);
+      const points = [
+        '"浸在" = 完全浸没 + 部分浸入',
+        '浮力只看 ρ液 和 V排',
+        '与物体质量、密度无关！',
+        '一斤铁 vs 一斤棉花：浮力相同',
       ];
-
-      if (t > 20) {
-        c.fillStyle = 'rgba(59, 130, 246, 0.15)';
-        c.fillRect(0, ch * 0.5, cw, ch * 0.5);
-
-        objects.forEach((obj, i) => {
-          const objTime = t - 20 - i * 10;
-          if (objTime > 0) {
-            const alpha = Math.min(1, objTime / 15);
-            const y = ch * 0.35 + i * 15;
-
-            c.font = `${Math.min(36, cw * 0.08)}px sans-serif`;
-            c.globalAlpha = alpha;
-            c.fillText(obj.emoji, obj.x, y);
-            c.globalAlpha = 1;
-
-            const arrowLen = i === 2 ? 50 : i === 1 ? 35 : 25;
-            c.strokeStyle = `rgba(34, 197, 94, ${alpha})`;
-            c.lineWidth = 2;
-            c.beginPath();
-            c.moveTo(obj.x, y + 5);
-            c.lineTo(obj.x, y + 5 + arrowLen);
-            c.stroke();
-            c.beginPath();
-            c.moveTo(obj.x - 5, y + arrowLen);
-            c.lineTo(obj.x, y + 5 + arrowLen);
-            c.lineTo(obj.x + 5, y + arrowLen);
-            c.stroke();
-
-            c.fillStyle = `rgba(107, 114, 128, ${alpha})`;
-            c.font = '12px sans-serif';
-            c.fillText(obj.label, obj.x, ch * 0.9);
-          }
-        });
-      }
-
-      if (t > 60) {
-        const keyAlpha = Math.min(1, (t - 60) / 20);
-        c.fillStyle = `rgba(30, 64, 175, ${keyAlpha})`;
-        c.font = '13px sans-serif';
-        c.textAlign = 'left';
-        c.fillText('① "浸在" = 完全浸没 + 部分浸入', cw * 0.05, ch * 0.95 - 20);
-        c.fillText('② 浮力只与 ρ液 和 V排 有关', cw * 0.05, ch * 0.95);
-      }
+      points.forEach((pt, i) => {
+        if (showIdx > i) {
+          const alpha = Math.min(1, (t - (i + 1) * 30) / 15);
+          c.globalAlpha = alpha;
+          c.fillStyle = '#374151';
+          c.font = '14px sans-serif';
+          c.textAlign = 'left';
+          c.fillText(`• ${pt}`, cw * 0.15, ch * (0.52 + i * 0.1));
+          c.globalAlpha = 1;
+        }
+      });
     };
 
     const drawApplication = (c: CanvasRenderingContext2D, cw: number, ch: number, t: number) => {
-      const grad = c.createLinearGradient(0, 0, 0, ch);
-      grad.addColorStop(0, '#bfdbfe');
-      grad.addColorStop(0.4, '#93c5fd');
-      grad.addColorStop(0.45, '#60a5fa');
-      grad.addColorStop(1, '#1e40af');
-      c.fillStyle = grad;
+      c.fillStyle = '#f0f9ff';
       c.fillRect(0, 0, cw, ch);
 
-      c.fillStyle = 'rgba(96, 165, 250, 0.3)';
-      for (let i = 0; i < 3; i++) {
+      c.fillStyle = 'rgba(59, 130, 246, 0.15)';
+      c.fillRect(0, ch * 0.4, cw, ch * 0.6);
+
+      c.strokeStyle = 'rgba(59, 130, 246, 0.3)';
+      c.lineWidth = 1;
+      for (let i = 0; i < 4; i++) {
+        const wy = ch * 0.4 + i * 15;
         c.beginPath();
-        c.moveTo(0, ch * (0.45 + i * 0.05));
-        for (let x = 0; x <= cw; x += 10) {
-          c.lineTo(x, ch * (0.45 + i * 0.05) + Math.sin(x * 0.02 + t * 0.05 + i) * 5);
+        c.moveTo(0, wy + Math.sin(t * 0.05 + i) * 5);
+        for (let x = 0; x < cw; x += 20) {
+          c.lineTo(x, wy + Math.sin(t * 0.05 + i + x * 0.01) * 5);
         }
-        c.lineTo(cw, ch);
-        c.lineTo(0, ch);
-        c.fill();
+        c.stroke();
       }
 
       if (t > 10) {
         const shipAlpha = Math.min(1, (t - 10) / 20);
         c.globalAlpha = shipAlpha;
-        const shipX = cw * 0.3 + Math.sin(t * 0.03) * 5;
-        const shipY = ch * 0.42 + Math.sin(t * 0.04) * 3;
+        const shipX = cw * 0.3;
+        const shipY = ch * 0.38 + Math.sin(t * 0.04) * 2;
 
         c.fillStyle = '#dc2626';
         c.beginPath();
@@ -390,16 +377,46 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
   );
 }
 
+// Preprocess speech text for TTS: replace symbols with Chinese equivalents
+function preprocessSpeechForTTS(text: string): string {
+  return text
+    .replace(/\+/g, '加')
+    .replace(/−/g, '减')
+    .replace(/-/g, '减')
+    .replace(/×/g, '乘以')
+    .replace(/÷/g, '除以')
+    .replace(/=/g, '等于')
+    .replace(/≈/g, '约等于')
+    .replace(/≠/g, '不等于')
+    .replace(/≥/g, '大于等于')
+    .replace(/≤/g, '小于等于')
+    .replace(/>/g, '大于')
+    .replace(/</g, '小于')
+    .replace(/ρ/g, '柔')
+    .replace(/π/g, '派')
+    .replace(/∑/g, '西格玛')
+    .replace(/√/g, '根号')
+    .replace(/∞/g, '无穷')
+    .replace(/∝/g, '正比于')
+    .replace(/\^/g, '的')
+    .replace(/F浮/g, 'F浮')
+    .replace(/V排/g, 'V排')
+    .replace(/V物/g, 'V物')
+    .replace(/G排/g, 'G排');
+}
+
 export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }: KnowledgeStationProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [mergedChapters, setMergedChapters] = useState<ChapterContent[]>(chapters);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioUriRef = useRef<string | null>(null);
   const pageAutoNextRef = useRef(false);
   const isPlayingRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // TTS audio URI cache: key is the preprocessed speech text
+  const ttsCacheRef = useRef<Map<string, string>>(new Map());
 
   // Load editor data from localStorage and merge
   useEffect(() => {
@@ -415,6 +432,8 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
                 ...ch,
                 text: edited[i].text ?? ch.text,
                 speech: edited[i].speech ?? ch.speech,
+                videoUrl: edited[i].videoUrl ?? ch.videoUrl,
+                videoName: edited[i].videoName ?? ch.videoName,
               };
             }
             return ch;
@@ -433,22 +452,69 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
-      audioRef.current.removeEventListener('timeupdate', () => {});
-      audioRef.current.removeEventListener('ended', () => {});
+      audioRef.current.currentTime = 0;
       audioRef.current = null;
     }
     isPlayingRef.current = false;
   }, []);
 
-  // Fetch TTS audio from backend API and play
+  // Fetch TTS audio from backend API and play (with cache)
   const fetchAndPlayTTS = useCallback((text: string, onEnd?: () => void) => {
     stopAudio();
     setIsLoading(true);
 
+    const processedText = preprocessSpeechForTTS(text);
+
+    // Check cache first
+    const cachedUri = ttsCacheRef.current.get(processedText);
+    if (cachedUri) {
+      const audio = new Audio(cachedUri);
+      audioRef.current = audio;
+      isPlayingRef.current = true;
+
+      audio.addEventListener('timeupdate', () => {
+        if (audio.duration && isFinite(audio.duration)) {
+          const pct = (audio.currentTime / audio.duration) * 100;
+          setProgress(pct);
+        }
+      });
+
+      audio.addEventListener('ended', () => {
+        isPlayingRef.current = false;
+        onEnd?.();
+      });
+
+      audio.addEventListener('error', () => {
+        console.error('Audio playback error');
+        isPlayingRef.current = false;
+        setIsPlaying(false);
+        setIsLoading(false);
+        // Remove bad cache entry
+        ttsCacheRef.current.delete(processedText);
+        onEnd?.();
+      });
+
+      audio.play().then(() => {
+        setIsLoading(false);
+        setIsPlaying(true);
+      }).catch(err => {
+        console.error('Audio play failed:', err);
+        isPlayingRef.current = false;
+        setIsPlaying(false);
+        setIsLoading(false);
+        // Remove bad cache entry
+        ttsCacheRef.current.delete(processedText);
+        onEnd?.();
+      });
+
+      return;
+    }
+
+    // Not in cache, fetch from API
     fetch('/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text: processedText }),
     })
       .then(res => res.json())
       .then(data => {
@@ -461,7 +527,9 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
         }
 
         const audioUri = data.audioUri as string;
-        audioUriRef.current = audioUri;
+
+        // Cache the audio URI
+        ttsCacheRef.current.set(processedText, audioUri);
 
         const audio = new Audio(audioUri);
         audioRef.current = audio;
@@ -484,18 +552,21 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
           isPlayingRef.current = false;
           setIsPlaying(false);
           setIsLoading(false);
+          ttsCacheRef.current.delete(processedText);
           onEnd?.();
         });
 
-        audio.play().catch(err => {
+        audio.play().then(() => {
+          setIsLoading(false);
+          setIsPlaying(true);
+        }).catch(err => {
           console.error('Audio play failed:', err);
           isPlayingRef.current = false;
           setIsPlaying(false);
           setIsLoading(false);
+          ttsCacheRef.current.delete(processedText);
           onEnd?.();
         });
-
-        setIsLoading(false);
       })
       .catch(err => {
         console.error('TTS fetch failed:', err);
@@ -506,12 +577,14 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
   }, [stopAudio]);
 
   const handlePlay = useCallback(() => {
-    if (audioRef.current && audioUriRef.current && !isPlayingRef.current) {
-      // Resume existing audio
+    // If we have an existing audio that was just paused (not ended), resume it
+    if (audioRef.current && !audioRef.current.ended && isPlayingRef.current === false && audioRef.current.currentTime > 0) {
       isPlayingRef.current = true;
       audioRef.current.play().catch(() => {
-        // If resume fails, re-fetch
-        fetchAndPlayTTS(chapter.speech, () => {
+        // If resume fails, re-fetch with current page's speech
+        const ch = mergedChapters[currentPage];
+        if (!ch) return;
+        fetchAndPlayTTS(ch.speech, () => {
           if (currentPage < mergedChapters.length - 1) {
             pageAutoNextRef.current = true;
             setCurrentPage(prev => prev + 1);
@@ -525,8 +598,11 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
       return;
     }
 
+    // No existing audio or audio ended - start fresh with current page's speech
     setIsPlaying(true);
-    fetchAndPlayTTS(chapter.speech, () => {
+    const ch = mergedChapters[currentPage];
+    if (!ch) return;
+    fetchAndPlayTTS(ch.speech, () => {
       if (currentPage < mergedChapters.length - 1) {
         pageAutoNextRef.current = true;
         setCurrentPage(prev => prev + 1);
@@ -535,7 +611,7 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
         setProgress(100);
       }
     });
-  }, [chapter.speech, currentPage, mergedChapters.length, fetchAndPlayTTS]);
+  }, [currentPage, mergedChapters, fetchAndPlayTTS]);
 
   const handlePause = useCallback(() => {
     if (audioRef.current && isPlayingRef.current) {
@@ -556,9 +632,9 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
 
   const goToPage = useCallback((page: number) => {
     stopAudio();
-    audioUriRef.current = null;
     setIsPlaying(false);
     setProgress(0);
+    pageAutoNextRef.current = false;
     setCurrentPage(page);
   }, [stopAudio]);
 
@@ -595,13 +671,41 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
   // Get knowledge cards for this law
   const cards = knowledgeCardsData[lawKey];
 
+  // Check if current chapter has an uploaded video
+  const hasUploadedVideo = Boolean(chapter.videoUrl);
+  const videoUrl = chapter.videoUrl || '';
+  const isVideoFile = videoUrl && !videoUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
+
   return (
     <div className="space-y-6">
       {/* Main content: single page with video and text */}
       <div className="bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
-        {/* Video animation */}
+        {/* Video animation or uploaded video */}
         <div className="relative">
-          <AnimationScene type={chapter.videoType} isPlaying={isPlaying} />
+          {hasUploadedVideo ? (
+            isVideoFile ? (
+              <div className="w-full aspect-video bg-black rounded-t-xl overflow-hidden">
+                <video
+                  src={videoUrl}
+                  className="w-full h-full object-contain"
+                  loop
+                  autoPlay={isPlaying}
+                  muted={false}
+                  controls={false}
+                />
+              </div>
+            ) : (
+              <div className="w-full aspect-video bg-gray-100 rounded-t-xl overflow-hidden flex items-center justify-center">
+                <img
+                  src={videoUrl}
+                  alt="教学图片"
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
+            )
+          ) : (
+            <AnimationScene type={chapter.videoType} isPlaying={isPlaying} />
+          )}
         </div>
 
         {/* Progress bar - full width */}
@@ -609,10 +713,12 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
           <div
             className="w-full h-1.5 bg-gray-200 rounded-full cursor-pointer"
             onClick={(e) => {
+              if (!audioRef.current || !audioRef.current.duration || !isFinite(audioRef.current.duration)) return;
               const rect = e.currentTarget.getBoundingClientRect();
               const x = e.clientX - rect.left;
               const pct = (x / rect.width) * 100;
               setProgress(pct);
+              audioRef.current.currentTime = (pct / 100) * audioRef.current.duration;
             }}
           >
             <div

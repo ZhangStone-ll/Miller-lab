@@ -6,10 +6,15 @@ import { archimedesChapters, ohmChapters, hookeChapters, ChapterContent } from '
 
 type LawKey = 'archimedes' | 'ohm' | 'hooke';
 
-const lawMap: Record<LawKey, { name: string; chapters: ChapterContent[]; color: string }> = {
-  archimedes: { name: '阿基米德定律', chapters: archimedesChapters, color: 'blue' },
-  ohm: { name: '欧姆定律', chapters: ohmChapters, color: 'amber' },
-  hooke: { name: '胡克定律', chapters: hookeChapters, color: 'emerald' },
+interface EditorChapter extends ChapterContent {
+  videoUrl?: string;
+  videoName?: string;
+}
+
+const lawMap: Record<LawKey, { name: string; chapters: EditorChapter[]; color: string }> = {
+  archimedes: { name: '阿基米德定律', chapters: archimedesChapters.map(c => ({ ...c })), color: 'blue' },
+  ohm: { name: '欧姆定律', chapters: ohmChapters.map(c => ({ ...c })), color: 'amber' },
+  hooke: { name: '胡克定律', chapters: hookeChapters.map(c => ({ ...c })), color: 'emerald' },
 };
 
 const chapterLabels = ['问题引入', '定律推导过程', '定律结论与理解', '生活中的应用'];
@@ -17,18 +22,19 @@ const chapterLabels = ['问题引入', '定律推导过程', '定律结论与理
 export default function EditorPage() {
   const [selectedLaw, setSelectedLaw] = useState<LawKey>('archimedes');
   const [selectedChapter, setSelectedChapter] = useState(0);
-  const [editData, setEditData] = useState<Record<LawKey, ChapterContent[]>>({
+  const [editData, setEditData] = useState<Record<LawKey, EditorChapter[]>>({
     archimedes: archimedesChapters.map(c => ({ ...c })),
     ohm: ohmChapters.map(c => ({ ...c })),
     hooke: hookeChapters.map(c => ({ ...c })),
   });
   const [saved, setSaved] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+  const [uploadMsg, setUploadMsg] = useState('');
 
   const law = lawMap[selectedLaw];
   const chapter = editData[selectedLaw][selectedChapter];
 
   useEffect(() => {
-    // Load from localStorage if available
     const stored = localStorage.getItem('physics-editor-data');
     if (stored) {
       try {
@@ -63,20 +69,65 @@ export default function EditorPage() {
     }));
   };
 
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // Store file reference (in production, would upload to object storage)
-    const url = URL.createObjectURL(file);
+
+    // Validate file type
+    const validTypes = ['video/mp4', 'video/webm', 'video/ogg', 'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml'];
+    if (!validTypes.includes(file.type)) {
+      setUploadStatus('error');
+      setUploadMsg('不支持的文件格式，请上传 MP4/WebM 视频或 PNG/JPG 图片');
+      setTimeout(() => { setUploadStatus('idle'); setUploadMsg(''); }, 3000);
+      return;
+    }
+
+    // Validate file size (max 50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      setUploadStatus('error');
+      setUploadMsg('文件大小不能超过50MB');
+      setTimeout(() => { setUploadStatus('idle'); setUploadMsg(''); }, 3000);
+      return;
+    }
+
+    setUploadStatus('uploading');
+    setUploadMsg('正在上传...');
+
+    try {
+      const url = URL.createObjectURL(file);
+      setEditData(prev => ({
+        ...prev,
+        [selectedLaw]: prev[selectedLaw].map((ch, i) =>
+          i === selectedChapter ? { ...ch, videoUrl: url, videoName: file.name } : ch
+        ),
+      }));
+      setUploadStatus('success');
+      setUploadMsg(`上传成功: ${file.name}`);
+      setTimeout(() => { setUploadStatus('idle'); setUploadMsg(''); }, 3000);
+    } catch {
+      setUploadStatus('error');
+      setUploadMsg('上传失败，请重试');
+      setTimeout(() => { setUploadStatus('idle'); setUploadMsg(''); }, 3000);
+    }
+
+    // Reset file input so same file can be re-uploaded
+    e.target.value = '';
+  };
+
+  const handleRemoveVideo = () => {
     setEditData(prev => ({
       ...prev,
       [selectedLaw]: prev[selectedLaw].map((ch, i) =>
-        i === selectedChapter ? { ...ch, videoUrl: url, videoName: file.name } : ch
+        i === selectedChapter ? { ...ch, videoUrl: undefined, videoName: undefined } : ch
       ),
     }));
   };
 
   const colorClass = law.color === 'blue' ? 'blue' : law.color === 'amber' ? 'amber' : 'emerald';
+
+  // Check if current chapter has an uploaded video/image
+  const hasVideo = Boolean(chapter.videoUrl);
+  const isVideoFile = chapter.videoUrl ? !chapter.videoUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) : false;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -166,7 +217,7 @@ export default function EditorPage() {
               className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 focus:ring-2 focus:ring-blue-300 focus:border-transparent resize-y"
               placeholder="输入语音播报文案..."
             />
-            <p className="text-xs text-gray-400 mt-1">此文案将用于视频讲解的语音播报</p>
+            <p className="text-xs text-gray-400 mt-1">此文案将用于视频讲解的语音播报，+/-等符号会自动转换为中文</p>
           </div>
 
           {/* Video Upload */}
@@ -174,35 +225,92 @@ export default function EditorPage() {
             <label className="block text-sm font-bold text-gray-700 mb-2">
               🎬 视频动画上传
             </label>
-            <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center hover:border-blue-300 transition-colors">
-              <input
-                type="file"
-                accept="video/*,image/*"
-                onChange={handleVideoUpload}
-                className="hidden"
-                id="video-upload"
-              />
-              <label htmlFor="video-upload" className="cursor-pointer">
-                <div className="text-4xl mb-2">📁</div>
-                <p className="text-sm text-gray-500">点击上传视频或图片文件</p>
-                <p className="text-xs text-gray-400 mt-1">支持 MP4, WebM, PNG, JPG 格式</p>
-              </label>
-            </div>
-            {'videoName' in chapter && Boolean((chapter as Record<string, unknown>).videoName) ? (
-              <div className="mt-3 flex items-center gap-2 bg-blue-50 rounded-lg px-3 py-2">
-                <span className="text-sm">📎</span>
-                <span className="text-sm text-blue-700">{String((chapter as Record<string, unknown>).videoName)}</span>
-              </div>
-            ) : null}
-          </div>
-        </div>
 
-        {/* Preview */}
-        <div className="mt-8 bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-bold text-gray-700 mb-4">👁 预览效果</h3>
-          <div className="bg-gray-50 rounded-lg p-6">
-            <h4 className="font-bold text-gray-800 mb-2">{chapterLabels[selectedChapter]}</h4>
-            <p className="text-sm text-gray-600 leading-relaxed">{chapter.text}</p>
+            {hasVideo ? (
+              /* Show uploaded video/image preview */
+              <div className="space-y-3">
+                {isVideoFile ? (
+                  <div className="w-full max-h-80 bg-black rounded-lg overflow-hidden">
+                    <video
+                      src={chapter.videoUrl}
+                      className="w-full h-full object-contain"
+                      controls
+                      autoPlay
+                      loop
+                    />
+                  </div>
+                ) : (
+                  <div className="w-full bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center p-4">
+                    <img
+                      src={chapter.videoUrl}
+                      alt="教学图片"
+                      className="max-w-full max-h-80 object-contain"
+                    />
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">📎</span>
+                    <span className="text-sm text-blue-700">{chapter.videoName}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor="video-replace"
+                      className="px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
+                    >
+                      替换文件
+                    </label>
+                    <button
+                      onClick={handleRemoveVideo}
+                      className="px-3 py-1 text-xs bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                    >
+                      删除
+                    </button>
+                  </div>
+                  <input
+                    type="file"
+                    accept="video/*,image/*"
+                    onChange={handleVideoUpload}
+                    className="hidden"
+                    id="video-replace"
+                  />
+                </div>
+              </div>
+            ) : (
+              /* Upload area */
+              <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center hover:border-blue-300 transition-colors">
+                <input
+                  type="file"
+                  accept="video/*,image/*"
+                  onChange={handleVideoUpload}
+                  className="hidden"
+                  id="video-upload"
+                />
+                <label htmlFor="video-upload" className="cursor-pointer">
+                  <div className="text-4xl mb-2">📁</div>
+                  <p className="text-sm text-gray-500">点击上传视频或图片文件</p>
+                  <p className="text-xs text-gray-400 mt-1">支持 MP4, WebM, PNG, JPG 格式（最大50MB）</p>
+                </label>
+              </div>
+            )}
+
+            {/* Upload status toast */}
+            {uploadStatus !== 'idle' && (
+              <div className={`mt-3 px-4 py-2 rounded-lg text-sm flex items-center gap-2 ${
+                uploadStatus === 'uploading' ? 'bg-blue-50 text-blue-700' :
+                uploadStatus === 'success' ? 'bg-green-50 text-green-700' :
+                'bg-red-50 text-red-700'
+              }`}>
+                {uploadStatus === 'uploading' && (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="animate-spin">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" strokeDasharray="31.4" strokeDashoffset="10" />
+                  </svg>
+                )}
+                {uploadStatus === 'success' && '✅'}
+                {uploadStatus === 'error' && '❌'}
+                {uploadMsg}
+              </div>
+            )}
           </div>
         </div>
       </main>

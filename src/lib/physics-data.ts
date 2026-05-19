@@ -3,6 +3,8 @@ export interface ChapterContent {
   text: string;
   speech: string;
   videoType: 'intro' | 'derivation' | 'conclusion' | 'application';
+  videoUrl?: string;
+  videoName?: string;
 }
 
 export const archimedesChapters: ChapterContent[] = [
