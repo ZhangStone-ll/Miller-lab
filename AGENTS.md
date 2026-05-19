@@ -12,6 +12,7 @@
 - **UI 组件**: shadcn/ui (基于 Radix UI)
 - **Styling**: Tailwind CSS 4
 - **LLM SDK**: coze-coding-dev-sdk (doubao-seed-2-0-mini-260215)
+- **TTS SDK**: coze-coding-dev-sdk (zh_male_dayi_saturn_bigtts - 大易男声)
 
 ## 目录结构
 
@@ -23,6 +24,7 @@
 │   │   ├── layout.tsx               # 全局布局
 │   │   ├── globals.css              # 全局样式
 │   │   ├── api/chat/route.ts        # AI助教流式对话API (SSE)
+│   │   ├── api/tts/route.ts         # TTS语音合成API (coze-coding-dev-sdk)
 │   │   ├── archimedes/page.tsx      # 阿基米德定律页面
 │   │   ├── ohm/page.tsx             # 欧姆定律页面
 │   │   ├── hooke/page.tsx           # 胡克定律页面
@@ -93,3 +95,8 @@
 - 请求体: `{ messages: [{role: string, content: string}] }`
 - 响应: SSE 流式 `data: {"content": "chunk"}\n\n`
 - 系统提示词限定回答中学物理范围
+
+### POST /api/tts
+- 请求体: `{ text: string }`
+- 响应: `{ audioUri: string, audioSize: number }`
+- TTS语音合成，使用大易男声(zh_male_dayi_saturn_bigtts)，语速1.2倍

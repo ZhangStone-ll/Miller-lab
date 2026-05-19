@@ -395,8 +395,11 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [mergedChapters, setMergedChapters] = useState<ChapterContent[]>(chapters);
-  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUriRef = useRef<string | null>(null);
   const pageAutoNextRef = useRef(false);
+  const isPlayingRef = useRef(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Load editor data from localStorage and merge
   useEffect(() => {
@@ -406,7 +409,6 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
         const editData = JSON.parse(stored);
         const edited = editData[lawKey];
         if (edited && Array.isArray(edited)) {
-          // Merge: editor data overrides default chapters
           const merged = chapters.map((ch, i) => {
             if (edited[i]) {
               return {
@@ -427,101 +429,104 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
 
   const chapter = mergedChapters[currentPage];
 
-  const stopSpeaking = useCallback(() => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
+  // Stop and cleanup audio
+  const stopAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.removeEventListener('timeupdate', () => {});
+      audioRef.current.removeEventListener('ended', () => {});
+      audioRef.current = null;
     }
+    isPlayingRef.current = false;
   }, []);
 
-  const getChineseMaleVoice = useCallback(() => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return null;
-    const voices = window.speechSynthesis.getVoices();
+  // Fetch TTS audio from backend API and play
+  const fetchAndPlayTTS = useCallback((text: string, onEnd?: () => void) => {
+    stopAudio();
+    setIsLoading(true);
 
-    // Priority 1: zh-CN male voices
-    const zhCnMale = voices.find(v =>
-      v.lang === 'zh-CN' && (v.name.toLowerCase().includes('male') || v.name.includes('男'))
-    );
-    if (zhCnMale) return zhCnMale;
+    fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          console.error('TTS error:', data.error);
+          setIsLoading(false);
+          setIsPlaying(false);
+          onEnd?.();
+          return;
+        }
 
-    // Priority 2: any Chinese male voice
-    const zhMale = voices.find(v =>
-      v.lang.startsWith('zh') && (v.name.toLowerCase().includes('male') || v.name.includes('男'))
-    );
-    if (zhMale) return zhMale;
+        const audioUri = data.audioUri as string;
+        audioUriRef.current = audioUri;
 
-    // Priority 3: zh-CN voices (typically male default)
-    const zhCn = voices.find(v => v.lang === 'zh-CN');
-    if (zhCn) return zhCn;
+        const audio = new Audio(audioUri);
+        audioRef.current = audio;
+        isPlayingRef.current = true;
 
-    // Priority 4: any Chinese voice
-    const zh = voices.find(v => v.lang.startsWith('zh'));
-    if (zh) return zh;
+        audio.addEventListener('timeupdate', () => {
+          if (audio.duration && isFinite(audio.duration)) {
+            const pct = (audio.currentTime / audio.duration) * 100;
+            setProgress(pct);
+          }
+        });
 
-    return null;
-  }, []);
+        audio.addEventListener('ended', () => {
+          isPlayingRef.current = false;
+          onEnd?.();
+        });
 
-  const speakText = useCallback((text: string, onEnd?: () => void) => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) {
-      onEnd?.();
+        audio.addEventListener('error', () => {
+          console.error('Audio playback error');
+          isPlayingRef.current = false;
+          setIsPlaying(false);
+          setIsLoading(false);
+          onEnd?.();
+        });
+
+        audio.play().catch(err => {
+          console.error('Audio play failed:', err);
+          isPlayingRef.current = false;
+          setIsPlaying(false);
+          setIsLoading(false);
+          onEnd?.();
+        });
+
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error('TTS fetch failed:', err);
+        setIsLoading(false);
+        setIsPlaying(false);
+        onEnd?.();
+      });
+  }, [stopAudio]);
+
+  const handlePlay = useCallback(() => {
+    if (audioRef.current && audioUriRef.current && !isPlayingRef.current) {
+      // Resume existing audio
+      isPlayingRef.current = true;
+      audioRef.current.play().catch(() => {
+        // If resume fails, re-fetch
+        fetchAndPlayTTS(chapter.speech, () => {
+          if (currentPage < mergedChapters.length - 1) {
+            pageAutoNextRef.current = true;
+            setCurrentPage(prev => prev + 1);
+          } else {
+            setIsPlaying(false);
+            setProgress(100);
+          }
+        });
+      });
+      setIsPlaying(true);
       return;
     }
 
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'zh-CN';
-    utterance.rate = 1.2;
-    utterance.pitch = 0.9;
-    utterance.volume = 1.0;
-
-    const voice = getChineseMaleVoice();
-    if (voice) {
-      utterance.voice = voice;
-    }
-
-    utterance.onend = () => {
-      onEnd?.();
-    };
-
-    utterance.onerror = () => {
-      onEnd?.();
-    };
-
-    window.speechSynthesis.speak(utterance);
-  }, [getChineseMaleVoice]);
-
-  const startProgressTimer = useCallback((durationMs: number, onComplete?: () => void) => {
-    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-    setProgress(0);
-
-    const stepMs = 50;
-    const increment = (stepMs / durationMs) * 100;
-
-    progressIntervalRef.current = setInterval(() => {
-      setProgress(prev => {
-        const next = prev + increment;
-        if (next >= 100) {
-          if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-          onComplete?.();
-          return 100;
-        }
-        return next;
-      });
-    }, stepMs);
-  }, []);
-
-  const estimateDuration = useCallback((text: string) => {
-    const charCount = text.length;
-    const rate = 1.2;
-    const charsPerSecond = 4 * rate;
-    return (charCount / charsPerSecond) * 1000;
-  }, []);
-
-  const handlePlay = useCallback(() => {
     setIsPlaying(true);
-    const duration = estimateDuration(chapter.speech);
-
-    speakText(chapter.speech, () => {
+    fetchAndPlayTTS(chapter.speech, () => {
       if (currentPage < mergedChapters.length - 1) {
         pageAutoNextRef.current = true;
         setCurrentPage(prev => prev + 1);
@@ -530,33 +535,32 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
         setProgress(100);
       }
     });
-
-    startProgressTimer(duration, () => {
-      if (currentPage >= mergedChapters.length - 1) {
-        setIsPlaying(false);
-      }
-    });
-  }, [chapter.speech, currentPage, mergedChapters.length, speakText, startProgressTimer, estimateDuration]);
+  }, [chapter.speech, currentPage, mergedChapters.length, fetchAndPlayTTS]);
 
   const handlePause = useCallback(() => {
+    if (audioRef.current && isPlayingRef.current) {
+      audioRef.current.pause();
+      isPlayingRef.current = false;
+    }
     setIsPlaying(false);
-    stopSpeaking();
-    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-  }, [stopSpeaking]);
+  }, []);
 
   const handlePlayPause = useCallback(() => {
+    if (isLoading) return;
     if (isPlaying) {
       handlePause();
     } else {
       handlePlay();
     }
-  }, [isPlaying, handlePlay, handlePause]);
+  }, [isPlaying, isLoading, handlePlay, handlePause]);
 
   const goToPage = useCallback((page: number) => {
-    handlePause();
+    stopAudio();
+    audioUriRef.current = null;
+    setIsPlaying(false);
     setProgress(0);
     setCurrentPage(page);
-  }, [handlePause]);
+  }, [stopAudio]);
 
   const handlePrevPage = useCallback(() => {
     if (currentPage > 0) {
@@ -584,10 +588,9 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      stopSpeaking();
-      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+      stopAudio();
     };
-  }, [stopSpeaking]);
+  }, [stopAudio]);
 
   // Get knowledge cards for this law
   const cards = knowledgeCardsData[lawKey];
@@ -654,9 +657,14 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
 
           <button
             onClick={handlePlayPause}
-            className={`w-12 h-12 rounded-full text-white flex items-center justify-center transition-colors shadow-lg ${lawColor}`}
+            disabled={isLoading}
+            className={`w-12 h-12 rounded-full text-white flex items-center justify-center transition-colors shadow-lg ${lawColor} ${isLoading ? 'opacity-70 cursor-wait' : ''}`}
           >
-            {isPlaying ? (
+            {isLoading ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="animate-spin">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="31.4" strokeDashoffset="10" />
+              </svg>
+            ) : isPlaying ? (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <rect x="6" y="4" width="4" height="16" rx="1" />
                 <rect x="14" y="4" width="4" height="16" rx="1" />
