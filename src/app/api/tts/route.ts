@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
       speaker: 'zh_male_dayi_saturn_bigtts',
       audioFormat: 'mp3',
       sampleRate: 24000,
-      // speechRate: 0 is default (1.0x), range [-500, 500]
-      speechRate: 0,
+      // speechRate: range [-500, 500], 0=1.0x, 50≈1.1x
+      speechRate: 50,
       loudnessRate: 0,
     });
 

@@ -15,7 +15,7 @@ const knowledgeCardsData: Record<string, { background: string; derivation: strin
   archimedes: {
     background: '古希腊国王怀疑工匠在纯金王冠中掺银，却无法测量不规则物体的体积。阿基米德在洗澡时观察到水溢出浴缸，灵光一闪发现了排水法测体积的原理，由此揭开了浮力与排开液体重力之间的关系。',
     derivation: '① 设柱体底面积S、高h，浸没在液体中：V排=Sh\n② 下表面受向上压力F上=ρ液gh下S，上表面受向下压力F下=ρ液gh上S\n③ F浮=F上-F下=ρ液gS(h下-h上)=ρ液gSh=ρ液gV排\n④ 此推导对任意形状物体均成立',
-    conclusion: '核心公式：F浮=ρ液gV排\n\n关键理解：\n① "浸在"包括完全浸没和部分浸入\n② 浮力只与液体密度和排开体积有关，与物体质量、密度无关\n③ 一斤铁和一斤棉花完全浸没时浮力相同',
+    conclusion: '核心公式：F浮=ρ液gV排\n\n关键理解：\n① "浸在"包括完全浸没和部分浸入\n② 浮力只与液体密度和排开体积有关，与物体自身质量、密度无关',
     application: '🚢 轮船：空心结构增大V排，使F浮=G船而漂浮\n🤖 潜水艇：调节水舱改变自重，控制浮沉\n🎈 氢气球：排开空气的重力>自重，受空气浮力升空\n🧊 密度计：利用漂浮时F浮=G，V排反比于ρ液',
   },
   ohm: {
@@ -144,78 +144,222 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
     };
 
     const drawDerivation = (c: CanvasRenderingContext2D, cw: number, ch: number, t: number) => {
-      c.fillStyle = '#f0f9ff';
+      // Background: light blue gradient
+      const grad = c.createLinearGradient(0, 0, 0, ch);
+      grad.addColorStop(0, '#eff6ff');
+      grad.addColorStop(1, '#dbeafe');
+      c.fillStyle = grad;
       c.fillRect(0, 0, cw, ch);
 
-      const step = Math.floor(t / 40);
-      const frac = (t % 40) / 40;
+      // Step counter based on time
+      const step = Math.min(Math.floor(t / 60), 4);
 
-      const cx = cw * 0.4;
-      const cy = ch * 0.5;
+      // === Left side: Cylinder in liquid ===
+      const cx = cw * 0.3;
+      const waterTop = ch * 0.2;
+      const waterBottom = ch * 0.85;
 
-      c.fillStyle = '#bfdbfe';
-      c.strokeStyle = '#3b82f6';
+      // Draw water container
+      c.fillStyle = 'rgba(59, 130, 246, 0.12)';
+      c.fillRect(cw * 0.1, waterTop, cw * 0.4, waterBottom - waterTop);
+      c.strokeStyle = '#93c5fd';
       c.lineWidth = 2;
-      const rW = 50;
-      const rH = 70;
-      c.fillRect(cx - rW / 2, cy - rH / 2, rW, rH);
-      c.strokeRect(cx - rW / 2, cy - rH / 2, rW, rH);
+      c.strokeRect(cw * 0.1, waterTop, cw * 0.4, waterBottom - waterTop);
 
-      c.fillStyle = 'rgba(59, 130, 246, 0.2)';
-      c.fillRect(cx - rW / 2, cy - rH / 2, rW, rH);
-
-      c.strokeStyle = '#ef4444';
-      c.lineWidth = 2;
+      // Water surface waves
+      c.strokeStyle = 'rgba(59, 130, 246, 0.4)';
+      c.lineWidth = 1.5;
       c.beginPath();
-      c.moveTo(cx, cy + rH / 2);
-      c.lineTo(cx, cy + rH / 2 + 30 + Math.sin(t * 0.05) * 3);
+      for (let x = cw * 0.1; x < cw * 0.5; x += 2) {
+        const waveY = waterTop + Math.sin(t * 0.06 + x * 0.03) * 2;
+        if (x === cw * 0.1) c.moveTo(x, waveY);
+        else c.lineTo(x, waveY);
+      }
       c.stroke();
-      c.fillStyle = '#ef4444';
+
+      // Water label
+      c.fillStyle = '#3b82f6';
       c.font = '12px sans-serif';
       c.textAlign = 'center';
-      c.fillText('F浮', cx + 15, cy + rH / 2 + 25);
+      c.fillText('液体 (ρ液)', cx, waterTop - 8);
 
-      c.strokeStyle = '#22c55e';
-      c.beginPath();
-      c.moveTo(cx, cy - rH / 2);
-      c.lineTo(cx, cy - rH / 2 - 30 - Math.sin(t * 0.05) * 3);
-      c.stroke();
-      c.fillStyle = '#22c55e';
-      c.fillText('F上', cx + 15, cy - rH / 2 - 20);
+      // Draw cylinder
+      const rW = 60;
+      const rH = 90;
+      const cylTop = ch * 0.35;
+      const cylLeft = cx - rW / 2;
 
-      if (step >= 1) {
-        c.fillStyle = '#1e40af';
-        c.font = 'bold 13px sans-serif';
-        c.textAlign = 'left';
-        c.fillText('① V排 = S × h', cw * 0.65, ch * 0.2);
-      }
-      if (step >= 2) {
-        c.fillText('② F上 = ρ液gh下S', cw * 0.65, ch * 0.35);
-        c.fillText('   F下 = ρ液gh上S', cw * 0.65, ch * 0.45);
-      }
-      if (step >= 3) {
-        c.fillText('③ F浮 = ρ液gS(h下-h上)', cw * 0.65, ch * 0.6);
-      }
-      if (step >= 4) {
-        c.fillStyle = '#dc2626';
-        c.font = 'bold 15px sans-serif';
-        c.fillText('F浮 = ρ液gV排', cw * 0.65, ch * 0.78);
-      }
+      // Cylinder body
+      c.fillStyle = 'rgba(147, 197, 253, 0.5)';
+      c.strokeStyle = '#3b82f6';
+      c.lineWidth = 2;
+      c.fillRect(cylLeft, cylTop, rW, rH);
+      c.strokeRect(cylLeft, cylTop, rW, rH);
 
-      c.fillStyle = '#94a3b8';
-      c.font = '11px sans-serif';
+      // Dimension labels on cylinder
+      c.fillStyle = '#64748b';
+      c.font = '12px sans-serif';
       c.textAlign = 'left';
-      c.fillText('S', cx + rW / 2 + 5, cy + 3);
-      c.fillText('h', cx - rW / 2 - 15, cy);
+      c.fillText('S', cylLeft + rW + 5, cylTop + rH / 2 + 4);
+      c.textAlign = 'right';
+      c.fillText('h', cylLeft - 8, cylTop + rH / 2 + 4);
 
-      const wSurf = cy - rH / 2 - 40;
-      c.strokeStyle = 'rgba(59, 130, 246, 0.4)';
-      c.setLineDash([4, 4]);
+      // Bracket for h
+      c.strokeStyle = '#64748b';
+      c.lineWidth = 1;
       c.beginPath();
-      c.moveTo(cw * 0.1, wSurf);
-      c.lineTo(cw * 0.55, wSurf);
+      c.moveTo(cylLeft - 4, cylTop);
+      c.lineTo(cylLeft - 12, cylTop);
+      c.lineTo(cylLeft - 12, cylTop + rH);
+      c.lineTo(cylLeft - 4, cylTop + rH);
       c.stroke();
-      c.setLineDash([]);
+
+      // Force arrows on cylinder (animated)
+      const arrowPulse = Math.sin(t * 0.05) * 3;
+
+      // F_up arrow (green, pointing up from bottom)
+      if (step >= 1) {
+        c.strokeStyle = '#22c55e';
+        c.fillStyle = '#22c55e';
+        c.lineWidth = 3;
+        const upLen = 35 + arrowPulse;
+        c.beginPath();
+        c.moveTo(cx, cylTop + rH);
+        c.lineTo(cx, cylTop + rH + upLen);
+        c.stroke();
+        // Arrow head
+        c.beginPath();
+        c.moveTo(cx - 6, cylTop + rH + 8);
+        c.lineTo(cx, cylTop + rH);
+        c.lineTo(cx + 6, cylTop + rH + 8);
+        c.fill();
+        c.font = 'bold 12px sans-serif';
+        c.textAlign = 'left';
+        c.fillText('F上 = ρ液gh下S', cx + 10, cylTop + rH + upLen / 2 + 4);
+      }
+
+      // F_down arrow (red, pointing down from top)
+      if (step >= 1) {
+        c.strokeStyle = '#ef4444';
+        c.fillStyle = '#ef4444';
+        c.lineWidth = 3;
+        const downLen = 25 - arrowPulse;
+        c.beginPath();
+        c.moveTo(cx, cylTop);
+        c.lineTo(cx, cylTop - downLen);
+        c.stroke();
+        // Arrow head
+        c.beginPath();
+        c.moveTo(cx - 6, cylTop - downLen + 8);
+        c.lineTo(cx, cylTop - downLen);
+        c.lineTo(cx + 6, cylTop - downLen + 8);
+        c.fill();
+        c.font = 'bold 12px sans-serif';
+        c.textAlign = 'left';
+        c.fillText('F下 = ρ液gh上S', cx + 10, cylTop - downLen / 2 + 4);
+      }
+
+      // h_down and h_up labels
+      if (step >= 1) {
+        c.fillStyle = '#64748b';
+        c.font = '11px sans-serif';
+        c.textAlign = 'left';
+        c.fillText('h下', cx + rW / 2 + 8, waterBottom - 10);
+        c.fillText('h上', cx + rW / 2 + 8, waterTop + 15);
+      }
+
+      // F_buoyancy result arrow (center, pointing up)
+      if (step >= 2) {
+        c.strokeStyle = '#f59e0b';
+        c.fillStyle = '#f59e0b';
+        c.lineWidth = 4;
+        const buoyLen = 45 + arrowPulse * 1.5;
+        const buoyX = cx;
+        const buoyY = ch * 0.92;
+        c.beginPath();
+        c.moveTo(buoyX, buoyY);
+        c.lineTo(buoyX, buoyY - buoyLen);
+        c.stroke();
+        c.beginPath();
+        c.moveTo(buoyX - 8, buoyY - buoyLen + 10);
+        c.lineTo(buoyX, buoyY - buoyLen);
+        c.lineTo(buoyX + 8, buoyY - buoyLen + 10);
+        c.fill();
+        c.font = 'bold 13px sans-serif';
+        c.textAlign = 'center';
+        c.fillText('F浮', buoyX, buoyY + 14);
+      }
+
+      // === Right side: Step-by-step derivation ===
+      const textX = cw * 0.58;
+      const textStartY = ch * 0.15;
+      const lineH = ch * 0.14;
+
+      // Title
+      c.fillStyle = '#1e40af';
+      c.font = 'bold 15px sans-serif';
+      c.textAlign = 'left';
+      c.fillText('推导过程', textX, textStartY - 5);
+
+      // Step 1
+      if (step >= 0) {
+        const alpha1 = Math.min(1, t / 30);
+        c.globalAlpha = alpha1;
+        c.fillStyle = '#374151';
+        c.font = '13px sans-serif';
+        c.fillText('① V排 = V物 = S × h', textX, textStartY + lineH);
+        c.globalAlpha = 1;
+      }
+
+      // Step 2
+      if (step >= 1) {
+        const alpha2 = Math.min(1, (t - 60) / 30);
+        c.globalAlpha = Math.max(0, alpha2);
+        c.fillStyle = '#374151';
+        c.font = '13px sans-serif';
+        c.fillText('② F上 = ρ液gh下S', textX, textStartY + lineH * 2);
+        c.fillText('   F下 = ρ液gh上S', textX, textStartY + lineH * 2.7);
+        c.globalAlpha = 1;
+      }
+
+      // Step 3
+      if (step >= 2) {
+        const alpha3 = Math.min(1, (t - 120) / 30);
+        c.globalAlpha = Math.max(0, alpha3);
+        c.fillStyle = '#374151';
+        c.font = '13px sans-serif';
+        c.fillText('③ F浮 = F上 - F下', textX, textStartY + lineH * 3.7);
+        c.fillText('     = ρ液gS(h下 - h上)', textX, textStartY + lineH * 4.3);
+        c.globalAlpha = 1;
+      }
+
+      // Step 4: Final result (highlighted)
+      if (step >= 3) {
+        const alpha4 = Math.min(1, (t - 180) / 30);
+        c.globalAlpha = Math.max(0, alpha4);
+
+        // Highlight box
+        const pulse = 1 + Math.sin(t * 0.08) * 0.02;
+        c.save();
+        c.translate(textX + 80, textStartY + lineH * 5.4);
+        c.scale(pulse, pulse);
+        c.fillStyle = '#fef3c7';
+        c.beginPath();
+        c.roundRect(-100, -16, 200, 32, 8);
+        c.fill();
+        c.strokeStyle = '#f59e0b';
+        c.lineWidth = 2;
+        c.beginPath();
+        c.roundRect(-100, -16, 200, 32, 8);
+        c.stroke();
+        c.fillStyle = '#92400e';
+        c.font = 'bold 16px sans-serif';
+        c.textAlign = 'center';
+        c.fillText('F浮 = ρ液gV排', 0, 6);
+        c.restore();
+
+        c.globalAlpha = 1;
+      }
     };
 
     const drawConclusion = (c: CanvasRenderingContext2D, cw: number, ch: number, t: number) => {
@@ -244,8 +388,7 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
       const points = [
         '"浸在" = 完全浸没 + 部分浸入',
         '浮力只看 ρ液 和 V排',
-        '与物体质量、密度无关！',
-        '一斤铁 vs 一斤棉花：浮力相同',
+        '与物体自身质量、密度无关！',
       ];
       points.forEach((pt, i) => {
         if (showIdx > i) {
@@ -349,7 +492,8 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
     };
 
     const draw = () => {
-      if (isPlayingRef.current) timeRef.current += 1;
+      // Always advance time so canvas is never blank
+      timeRef.current += 1;
       ctx.clearRect(0, 0, w, h);
 
       switch (type) {
@@ -412,14 +556,24 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
   const [mergedChapters, setMergedChapters] = useState<ChapterContent[]>(chapters);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const pageAutoNextRef = useRef(false);
+  const autoPlayOnPageChangeRef = useRef(false);
   const isPlayingRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // TTS audio URI cache: persisted to localStorage for cross-page survival
   const CACHE_KEY = 'physics-tts-cache';
+  const CACHE_VERSION_KEY = 'physics-tts-cache-version';
+  const CACHE_VERSION = 'v2'; // Bump version when TTS params change to invalidate old cache
   const getTTSCache = (): Map<string, string> => {
     if (typeof window === 'undefined') return new Map();
     try {
+      // Check cache version - clear if outdated
+      const version = localStorage.getItem(CACHE_VERSION_KEY);
+      if (version !== CACHE_VERSION) {
+        localStorage.removeItem(CACHE_KEY);
+        localStorage.setItem(CACHE_VERSION_KEY, CACHE_VERSION);
+        return new Map();
+      }
       const stored = localStorage.getItem(CACHE_KEY);
       if (stored) return new Map(JSON.parse(stored));
     } catch { /* ignore */ }
@@ -654,6 +808,7 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
     setIsPlaying(false);
     setProgress(0);
     pageAutoNextRef.current = false;
+    autoPlayOnPageChangeRef.current = true;
     setCurrentPage(page);
   }, [stopAudio]);
 
@@ -680,6 +835,17 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
     }
   }, [currentPage, handlePlay]);
 
+  // Auto-play when navigating to a new page via prev/next buttons
+  useEffect(() => {
+    if (autoPlayOnPageChangeRef.current) {
+      autoPlayOnPageChangeRef.current = false;
+      const timer = setTimeout(() => {
+        handlePlay();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [currentPage, handlePlay]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -691,7 +857,7 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
   const cards = knowledgeCardsData[lawKey];
 
   // Check if current chapter has an uploaded video
-  const hasUploadedVideo = Boolean(chapter.videoUrl);
+  const hasUploadedVideo = Boolean(chapter.videoUrl && chapter.videoUrl.trim());
   const videoUrl = chapter.videoUrl || '';
   const isVideoFile = videoUrl && !videoUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
 
