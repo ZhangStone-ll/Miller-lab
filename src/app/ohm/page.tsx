@@ -312,11 +312,18 @@ function OhmExperiment1({ onSwitchExperiment }: { onSwitchExperiment: () => void
       ctx.font = 'bold 16px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('A', left, ammeterY + 6);
-      // Ammeter label (above the circle)
+      // Ammeter label (to the right of the circle)
       ctx.font = '11px sans-serif';
-      ctx.textAlign = 'center';
+      ctx.textAlign = 'left';
       ctx.fillStyle = '#6b7280';
-      ctx.fillText('电流表', left, ammeterY - 24);
+      ctx.fillText('电流表', left + 18, ammeterY - 8);
+      // Ammeter reading (to the right of the circle)
+      if (switchClosed) {
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#dc2626';
+        ctx.fillText(`${(current * 1000).toFixed(1)}A`, left + 18, ammeterY + 10);
+      }
 
       // ======== VOLTMETER parallel across fixed resistor (vertical, standing) ========
       const vmCenterX = resX;
@@ -355,14 +362,7 @@ function OhmExperiment1({ onSwitchExperiment }: { onSwitchExperiment: () => void
       ctx.fillText('电压表', vmCenterX, vmCenterY + 38);
 
       // ======== READINGS ========
-      // Ammeter reading - to the right of ammeter circle
-      if (st.switchClosed) {
-        const aReading = (st.current * 1000).toFixed(1);
-        ctx.font = 'bold 13px monospace';
-        ctx.fillStyle = '#15803d';
-        ctx.textAlign = 'left';
-        ctx.fillText(`${aReading}mA`, left + 24, ammeterY + 5);
-      }
+
 
       // Voltmeter reading - to the right of "电压表" label
       const vReading = st.switchClosed ? st.voltageAcrossR.toFixed(2) : '0.00';
