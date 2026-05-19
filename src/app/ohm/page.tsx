@@ -316,18 +316,18 @@ function OhmExperiment1({ onSwitchExperiment }: { onSwitchExperiment: () => void
       ctx.font = '11px sans-serif';
       ctx.textAlign = 'left';
       ctx.fillStyle = '#6b7280';
-      ctx.fillText('电流表', left + 18, ammeterY - 8);
-      // Ammeter reading (to the right of the circle)
+      ctx.fillText('电流表', left + 30, ammeterY - 8);
+      // Ammeter reading (to the right of the circle, outside)
       if (st.switchClosed) {
         ctx.font = 'bold 12px sans-serif';
         ctx.textAlign = 'left';
         ctx.fillStyle = '#dc2626';
-        ctx.fillText(`${(st.current * 1000).toFixed(1)}A`, left + 18, ammeterY + 10);
+        ctx.fillText(`${(st.current * 1000).toFixed(1)}A`, left + 30, ammeterY + 10);
       } else {
         ctx.font = 'bold 12px sans-serif';
         ctx.textAlign = 'left';
         ctx.fillStyle = '#9ca3af';
-        ctx.fillText('0.0A', left + 18, ammeterY + 10);
+        ctx.fillText('0.0A', left + 30, ammeterY + 10);
       }
 
       // ======== VOLTMETER parallel across fixed resistor (vertical, standing) ========
