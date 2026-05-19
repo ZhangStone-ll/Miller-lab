@@ -89,26 +89,27 @@ function OhmExperiment1() {
     const scaleY = canvas.height / rect.height;
     const x = (e.clientX - rect.left) * scaleX;
     const y = (e.clientY - rect.top) * scaleY;
-    const w = canvas.width;
-    const h = canvas.height;
-    const midX = w / 2;
-    const top = 55;
-    const bottom = h - 90;
-    const sliderY = bottom - 40;
 
-    // Check switch click (top area, after battery)
-    const switchX = midX + 90;
-    if (Math.abs(x - switchX) < 35 && Math.abs(y - top) < 35) {
+    // Layout constants (must match draw)
+    const left = 90;
+    const right = 610;
+    const topC = 55;
+    const bottom = 310;
+    const midX = (left + right) / 2;
+
+    // Check switch click (top line, between battery+ and right corner)
+    const switchX = left + 80;
+    if (Math.abs(x - switchX) < 40 && Math.abs(y - topC) < 30) {
       handleToggleSwitch();
       return;
     }
 
-    // Check slider rheostat click (bottom right horizontal)
-    const sliderLeft = midX + 30;
-    const sliderRight = w - 100;
+    // Check slider rheostat click (bottom horizontal, right side)
+    const sliderLeft = midX + 20;
+    const sliderRight = right - 20;
     const sliderW = sliderRight - sliderLeft;
-    if (!switchClosed) return;
-    if (y >= sliderY - 35 && y <= sliderY + 20 && x >= sliderLeft - 10 && x <= sliderRight + 10) {
+    const sliderY = bottom;
+    if (switchClosed && y >= sliderY - 30 && y <= sliderY + 25 && x >= sliderLeft - 10 && x <= sliderRight + 10) {
       const relX = x - sliderLeft;
       const newPos = Math.max(0, Math.min(100, (relX / sliderW) * 100));
       handleSliderChange(newPos);
@@ -134,191 +135,195 @@ function OhmExperiment1() {
       ctx.fillRect(0, 0, w, h);
 
       // Circuit layout matching the reference image:
-      // Power source at TOP, Ammeter on LEFT, Fixed resistor BOTTOM-LEFT, Slider BOTTOM-RIGHT
-      // Voltmeter parallel across fixed resistor
-      // Current: Battery+ → right → down Slider → left Resistor → left Ammeter → up → Battery-
+      // Power source at TOP center, Switch S on top-left wire
+      // Ammeter on LEFT side (series), Fixed resistor on BOTTOM-LEFT (horizontal)
+      // Slider rheostat on BOTTOM-RIGHT (horizontal), Voltmeter parallel across fixed resistor (vertical, drawn standing)
+      // Current: Battery+ → right → Switch S → down-right → Slider → left → Resistor → left → Ammeter → up → Battery-
 
-      const left = 100;
-      const right = w - 60;
-      const topC = 60;
-      const bottom = h - 60;
+      const left = 90;
+      const right = 610;
+      const topC = 55;
+      const bottom = 310;
       const midX = (left + right) / 2;
       const midY = (topC + bottom) / 2;
 
-      const wireColor = st.switchClosed ? '#64748b' : '#94a3b8';
+      const wireColor = st.switchClosed ? '#475569' : '#94a3b8';
       ctx.strokeStyle = wireColor;
       ctx.lineWidth = 3;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      // --- Battery at top center ---
+      // ======== TOP WIRE: Battery at top center ========
       const batX = midX;
-      const batTop = topC;
-      // Long line (positive)
+      // Battery: long line (+) on left, short line (-) on right
       ctx.strokeStyle = '#374151';
       ctx.lineWidth = 3;
+      // Positive (long line)
       ctx.beginPath();
-      ctx.moveTo(batX - 18, batTop);
-      ctx.lineTo(batX + 18, batTop);
+      ctx.moveTo(batX - 6, topC - 14);
+      ctx.lineTo(batX - 6, topC + 14);
       ctx.stroke();
-      // Short line (negative)
-      ctx.lineWidth = 3;
+      // Negative (short line)
       ctx.beginPath();
-      ctx.moveTo(batX - 10, batTop + 10);
-      ctx.lineTo(batX + 10, batTop + 10);
+      ctx.moveTo(batX + 6, topC - 8);
+      ctx.lineTo(batX + 6, topC + 8);
       ctx.stroke();
       // + / - labels
       ctx.fillStyle = '#dc2626';
-      ctx.font = 'bold 14px sans-serif';
+      ctx.font = 'bold 12px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('+', batX + 28, batTop + 4);
+      ctx.fillText('+', batX - 20, topC - 10);
       ctx.fillStyle = '#2563eb';
-      ctx.fillText('−', batX + 28, batTop + 14);
-      // Wire from battery+ right
+      ctx.fillText('−', batX + 20, topC - 10);
+      // Wire: Battery- (right) → right corner
       ctx.strokeStyle = wireColor;
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(batX + 18, batTop);
-      ctx.lineTo(right, batTop);
+      ctx.moveTo(batX + 6, topC);
+      ctx.lineTo(right, topC);
       ctx.stroke();
-      // Wire from battery- left
+      // Wire: Battery+ (left) → left to switch
       ctx.beginPath();
-      ctx.moveTo(batX - 18, batTop);
-      ctx.lineTo(left, batTop);
+      ctx.moveTo(batX - 6, topC);
+      ctx.lineTo(left, topC);
       ctx.stroke();
 
-      // --- Switch S on top-left wire ---
-      const switchX = left + 60;
-      ctx.fillStyle = st.switchClosed ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)';
-      ctx.fillRect(switchX - 35, batTop - 20, 70, 40);
+      // ======== SWITCH S on top-left wire ========
+      const switchX = left + 80;
+      // Clickable highlight area
+      ctx.fillStyle = st.switchClosed ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)';
+      ctx.fillRect(switchX - 30, topC - 22, 60, 44);
       if (st.switchClosed) {
+        // Closed: horizontal line connecting two dots
         ctx.strokeStyle = wireColor;
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(switchX - 25, batTop);
-        ctx.lineTo(switchX + 25, batTop);
+        ctx.moveTo(switchX - 22, topC);
+        ctx.lineTo(switchX + 22, topC);
         ctx.stroke();
         ctx.fillStyle = '#22c55e';
         ctx.beginPath();
-        ctx.arc(switchX - 25, batTop, 6, 0, Math.PI * 2);
+        ctx.arc(switchX - 22, topC, 5, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(switchX + 25, batTop, 6, 0, Math.PI * 2);
+        ctx.arc(switchX + 22, topC, 5, 0, Math.PI * 2);
         ctx.fill();
       } else {
+        // Open: line tilting up from left dot
         ctx.strokeStyle = wireColor;
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(switchX - 25, batTop);
-        ctx.lineTo(switchX + 15, batTop - 25);
+        ctx.moveTo(switchX - 22, topC);
+        ctx.lineTo(switchX + 14, topC - 22);
         ctx.stroke();
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
-        ctx.arc(switchX - 25, batTop, 6, 0, Math.PI * 2);
+        ctx.arc(switchX - 22, topC, 5, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = '#94a3b8';
         ctx.beginPath();
-        ctx.arc(switchX + 25, batTop, 6, 0, Math.PI * 2);
+        ctx.arc(switchX + 22, topC, 5, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.fillStyle = '#374151';
-      ctx.font = 'bold 13px sans-serif';
+      ctx.font = 'bold 12px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('S', switchX, batTop - 28);
+      ctx.fillText('S', switchX, topC - 26);
+      ctx.font = '9px sans-serif';
+      ctx.fillText('点击切换', switchX, topC + 36);
 
-      // --- Right wire: top-right down to bottom-right ---
+      // ======== RIGHT WIRE: top-right down to bottom-right ========
       ctx.strokeStyle = wireColor;
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(right, batTop);
+      ctx.moveTo(right, topC);
       ctx.lineTo(right, bottom);
       ctx.stroke();
 
-      // --- Slider rheostat on right side ---
-      const sliderY = midY - 10;
-      const sliderH = 100;
-      ctx.fillStyle = 'rgba(67,56,202,0.06)';
-      ctx.fillRect(right - 30, sliderY - sliderH / 2 - 15, 80, sliderH + 30);
-      // Rheostat body (rectangle with zigzag)
-      ctx.fillStyle = '#e0e7ff';
+      // ======== SLIDER RHEOSTAT on bottom-right (horizontal) ========
+      const sliderLeft = midX + 20;
+      const sliderRight = right - 20;
+      const sliderW = sliderRight - sliderLeft;
+      const sliderY = bottom;
+      // Highlight area
+      ctx.fillStyle = 'rgba(67,56,202,0.04)';
+      ctx.fillRect(sliderLeft - 10, sliderY - 28, sliderW + 20, 50);
+      // Rheostat body (zigzag horizontal)
       ctx.strokeStyle = '#4338ca';
       ctx.lineWidth = 2;
-      const rX1 = right - 8;
-      const rX2 = right + 8;
       ctx.beginPath();
-      ctx.moveTo(right, sliderY - sliderH / 2);
-      for (let i = 0; i < 6; i++) {
-        const y = sliderY - sliderH / 2 + (i + 0.5) * sliderH / 6;
-        const xOff = (i % 2 === 0) ? 14 : -14;
-        ctx.lineTo(right + xOff, y);
+      ctx.moveTo(sliderLeft, sliderY);
+      for (let i = 0; i < 8; i++) {
+        const xp = sliderLeft + (i + 0.5) * sliderW / 8;
+        const yOff = (i % 2 === 0) ? -14 : 14;
+        ctx.lineTo(xp, sliderY + yOff);
       }
-      ctx.lineTo(right, sliderY + sliderH / 2);
+      ctx.lineTo(sliderRight, sliderY);
       ctx.stroke();
-      // Slider arrow (horizontal arrow pointing to rheostat)
-      const arrowY = sliderY - sliderH / 2 + (st.sliderPosition / 100) * sliderH;
+      // Slider position triangle
+      const arrowX = sliderLeft + (st.sliderPosition / 100) * sliderW;
       ctx.fillStyle = '#4338ca';
       ctx.beginPath();
-      ctx.moveTo(right + 30, arrowY);
-      ctx.lineTo(right + 18, arrowY - 7);
-      ctx.lineTo(right + 18, arrowY + 7);
+      ctx.moveTo(arrowX, sliderY - 22);
+      ctx.lineTo(arrowX - 7, sliderY - 32);
+      ctx.lineTo(arrowX + 7, sliderY - 32);
       ctx.closePath();
       ctx.fill();
       ctx.beginPath();
-      ctx.moveTo(right + 18, arrowY);
-      ctx.lineTo(right + 10, arrowY);
+      ctx.moveTo(arrowX, sliderY - 22);
+      ctx.lineTo(arrowX, sliderY - 16);
       ctx.stroke();
       // Slider label
       ctx.fillStyle = '#4338ca';
-      ctx.font = '11px sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('滑动变阻器', right + 20, sliderY - sliderH / 2 - 5);
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('滑动变阻器', (sliderLeft + sliderRight) / 2, sliderY + 30);
       ctx.font = '10px sans-serif';
-      ctx.fillText('点击调节', right + 20, sliderY + sliderH / 2 + 15);
+      ctx.fillText('点击调节', (sliderLeft + sliderRight) / 2, sliderY + 43);
 
-      // --- Bottom wire: right to left ---
+      // Wire: slider left end → to fixed resistor right end
       ctx.strokeStyle = wireColor;
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(right, bottom);
-      ctx.lineTo(left, bottom);
+      ctx.moveTo(sliderLeft, sliderY);
+      ctx.lineTo(sliderLeft - 10, sliderY);
       ctx.stroke();
 
-      // --- Fixed resistor on bottom-left ---
-      const resX = left + (midX - left) / 2;
-      const resW = 80;
+      // ======== FIXED RESISTOR on bottom-left (horizontal) ========
+      const resLeft = left + 30;
+      const resRight = sliderLeft - 10;
+      const resW = resRight - resLeft;
+      const resX = (resLeft + resRight) / 2;
       // Resistor box
       ctx.fillStyle = '#fef2f2';
       ctx.strokeStyle = '#dc2626';
       ctx.lineWidth = 2;
-      ctx.fillRect(resX - resW / 2, bottom - 12, resW, 24);
-      ctx.strokeRect(resX - resW / 2, bottom - 12, resW, 24);
-      // Wire connects through resistor (left and right edges)
-      ctx.strokeStyle = wireColor;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(resX - resW / 2, bottom);
-      ctx.lineTo(left, bottom);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(resX + resW / 2, bottom);
-      ctx.lineTo(midX, bottom);
-      ctx.stroke();
+      ctx.fillRect(resLeft, bottom - 12, resW, 24);
+      ctx.strokeRect(resLeft, bottom - 12, resW, 24);
       // Resistor label
       ctx.fillStyle = '#991b1b';
       ctx.font = 'bold 12px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(`定值电阻 R=${fixedResistance}Ω`, resX, bottom - 20);
 
-      // --- Left wire: bottom-left up to top-left ---
+      // Wire: left bottom → to resistor left
       ctx.strokeStyle = wireColor;
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(left, bottom);
-      ctx.lineTo(left, batTop);
+      ctx.lineTo(resLeft, bottom);
       ctx.stroke();
 
-      // --- Ammeter on left side ---
-      const ammeterY = midY + 10;
+      // ======== LEFT WIRE: bottom-left up to top-left ========
+      ctx.strokeStyle = wireColor;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(left, bottom);
+      ctx.lineTo(left, topC);
+      ctx.stroke();
+
+      // ======== AMMETER on left side (vertical, in series) ========
+      const ammeterY = midY;
       ctx.fillStyle = '#dcfce7';
       ctx.strokeStyle = '#16a34a';
       ctx.lineWidth = 2;
@@ -330,94 +335,103 @@ function OhmExperiment1() {
       ctx.font = 'bold 16px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('A', left, ammeterY + 6);
-      // Ammeter label
+      // Ammeter label (to the left of the circle)
       ctx.font = '11px sans-serif';
-      ctx.fillText('电流表', left, ammeterY - 35);
-      // Ammeter reading - highlighted
-      const aReading = (st.current * 1000).toFixed(1);
-      const aText = `${aReading}mA`;
-      const aTW = ctx.measureText(aText).width;
-      ctx.font = 'bold 15px monospace';
-      ctx.fillStyle = 'rgba(22,163,74,0.15)';
-      ctx.fillRect(left - aTW / 2 - 8, ammeterY + 30, aTW + 16, 24);
-      ctx.strokeStyle = '#16a34a';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(left - aTW / 2 - 8, ammeterY + 30, aTW + 16, 24);
-      ctx.fillStyle = '#15803d';
-      ctx.font = 'bold 15px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(aText, left, ammeterY + 47);
+      ctx.textAlign = 'right';
+      ctx.fillText('电流表', left - 34, ammeterY + 4);
 
-      // --- Voltmeter parallel across fixed resistor ---
-      const voltmeterX = resX;
-      const voltmeterY = bottom + 55;
-      // Dashed wires from resistor endpoints to voltmeter
+      // ======== VOLTMETER parallel across fixed resistor (vertical, standing) ========
+      const vmCenterX = resX;
+      const vmCenterY = bottom + 65;
+      // Dashed wires from resistor endpoints down to voltmeter
       ctx.setLineDash([4, 4]);
       ctx.strokeStyle = '#93c5fd';
       ctx.lineWidth = 1.5;
+      // Left branch: resistor left end → down → voltmeter left
       ctx.beginPath();
-      ctx.moveTo(resX - resW / 2, bottom);
-      ctx.lineTo(resX - resW / 2, voltmeterY);
-      ctx.lineTo(voltmeterX - 28, voltmeterY);
+      ctx.moveTo(resLeft, bottom + 12);
+      ctx.lineTo(resLeft, vmCenterY);
+      ctx.lineTo(vmCenterX - 24, vmCenterY);
       ctx.stroke();
+      // Right branch: resistor right end → down → voltmeter right
       ctx.beginPath();
-      ctx.moveTo(resX + resW / 2, bottom);
-      ctx.lineTo(resX + resW / 2, voltmeterY);
-      ctx.lineTo(voltmeterX + 28, voltmeterY);
+      ctx.moveTo(resRight, bottom + 12);
+      ctx.lineTo(resRight, vmCenterY);
+      ctx.lineTo(vmCenterX + 24, vmCenterY);
       ctx.stroke();
       ctx.setLineDash([]);
-      // Voltmeter circle
+      // Voltmeter circle (standing - vertical orientation means standard circle with V)
       ctx.fillStyle = '#dbeafe';
       ctx.strokeStyle = '#2563eb';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(voltmeterX, voltmeterY, 28, 0, Math.PI * 2);
+      ctx.arc(vmCenterX, vmCenterY, 24, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = '#1e40af';
-      ctx.font = 'bold 16px sans-serif';
+      ctx.font = 'bold 15px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('V', voltmeterX, voltmeterY + 6);
+      ctx.fillText('V', vmCenterX, vmCenterY + 5);
       // Voltmeter label
       ctx.font = '11px sans-serif';
-      ctx.fillText('电压表', voltmeterX, voltmeterY + 42);
-      // Voltmeter reading - highlighted
+      ctx.fillText('电压表', vmCenterX, vmCenterY + 38);
+
+      // ======== READINGS OUTSIDE CIRCUIT (highlighted boxes) ========
+      // Ammeter reading - to the left of ammeter circle
+      const aReading = (st.current * 1000).toFixed(1);
+      const aText = `${aReading} mA`;
+      ctx.font = 'bold 16px monospace';
+      const aTW = ctx.measureText(aText).width;
+      ctx.fillStyle = 'rgba(22,163,74,0.12)';
+      const aBoxX = left - 34 - aTW - 16;
+      const aBoxY = ammeterY - 12;
+      ctx.fillRect(aBoxX, aBoxY, aTW + 16, 24);
+      ctx.strokeStyle = '#16a34a';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(aBoxX, aBoxY, aTW + 16, 24);
+      ctx.fillStyle = '#15803d';
+      ctx.textAlign = 'left';
+      ctx.fillText(aText, aBoxX + 8, ammeterY + 5);
+
+      // Voltmeter reading - below voltmeter circle
       const vReading = st.voltageAcrossR.toFixed(2);
-      const vText = `${vReading}V`;
-      ctx.font = 'bold 15px monospace';
+      const vText = `${vReading} V`;
+      ctx.font = 'bold 16px monospace';
       const vTW = ctx.measureText(vText).width;
-      ctx.fillStyle = 'rgba(37,99,235,0.15)';
-      ctx.fillRect(voltmeterX - vTW / 2 - 8, voltmeterY + 46, vTW + 16, 24);
+      ctx.fillStyle = 'rgba(37,99,235,0.12)';
+      ctx.fillRect(vmCenterX - vTW / 2 - 8, vmCenterY + 42, vTW + 16, 24);
       ctx.strokeStyle = '#2563eb';
       ctx.lineWidth = 1.5;
-      ctx.strokeRect(voltmeterX - vTW / 2 - 8, voltmeterY + 46, vTW + 16, 24);
+      ctx.strokeRect(vmCenterX - vTW / 2 - 8, vmCenterY + 42, vTW + 16, 24);
       ctx.fillStyle = '#1e40af';
-      ctx.font = 'bold 15px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(vText, voltmeterX, voltmeterY + 63);
+      ctx.fillText(vText, vmCenterX, vmCenterY + 59);
 
-      // --- Electron animation when switch is closed ---
+      // ======== ELECTRON ANIMATION when switch is closed ========
       if (st.switchClosed && st.current > 0.001) {
         const electronSpeed = st.current * 30;
         const time = timeRef.current * electronSpeed;
         ctx.fillStyle = '#3b82f6';
-        // Path: Battery+ → right-top → right-down(Slider) → bottom-right → bottom-left(Resistor) → left-down → left-up(Ammeter) → left-top → Battery-
+        // Path following the circuit: Battery- → right → down → slider → left → resistor → left → ammeter → up → Battery+
         const points = [
-          { x: batX + 18, y: batTop },
-          { x: right, y: batTop },
+          { x: batX + 6, y: topC },
+          { x: right, y: topC },
           { x: right, y: bottom },
+          { x: sliderRight, y: bottom },
+          { x: sliderLeft, y: bottom },
+          { x: resRight, y: bottom },
+          { x: resLeft, y: bottom },
           { x: left, y: bottom },
-          { x: left, y: batTop },
-          { x: batX - 18, y: batTop },
+          { x: left, y: topC },
+          { x: batX - 6, y: topC },
         ];
-        // Calculate total perimeter
         let perimeter = 0;
         for (let i = 0; i < points.length; i++) {
           const next = points[(i + 1) % points.length];
           perimeter += Math.sqrt((next.x - points[i].x) ** 2 + (next.y - points[i].y) ** 2);
         }
-        for (let i = 0; i < 12; i++) {
-          const t = ((time + i * perimeter / 12) % perimeter) / perimeter;
+        for (let i = 0; i < 14; i++) {
+          const t = ((time + i * perimeter / 14) % perimeter) / perimeter;
           let dist = t * perimeter;
           let ex = points[0].x, ey = points[0].y;
           for (let j = 0; j < points.length; j++) {
@@ -432,7 +446,7 @@ function OhmExperiment1() {
             dist -= segLen;
           }
           ctx.beginPath();
-          ctx.arc(ex, ey, 3.5, 0, Math.PI * 2);
+          ctx.arc(ex, ey, 3, 0, Math.PI * 2);
           ctx.fill();
         }
       }
@@ -497,7 +511,7 @@ function OhmExperiment1() {
         {/* Left: Circuit canvas and controls */}
         <div className="space-y-4">
           <div className="bg-white rounded-xl border border-amber-100 p-3">
-            <canvas ref={canvasRef} width={700} height={400} className="w-full rounded-lg cursor-pointer" onClick={handleCanvasClick} />
+            <canvas ref={canvasRef} width={700} height={440} className="w-full rounded-lg cursor-pointer" onClick={handleCanvasClick} />
           </div>
           <div className="bg-white rounded-xl border border-amber-100 p-4 space-y-4">
             <div className="flex items-center gap-4 flex-wrap">
