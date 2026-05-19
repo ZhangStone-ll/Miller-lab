@@ -819,52 +819,53 @@ function OhmExperiment2({ onSwitchExperiment }: { onSwitchExperiment: () => void
       ctx.textAlign = 'center';
       ctx.fillText(`定值电阻 ${st.currentResistance}Ω`, resCenterX, sliderY + 28);
 
-      // === Wire from resistor left to ammeter ===
-      const ammeterX = left;
-      const ammeterY = sliderY;
+      // === Ammeter on left side (vertical, same as Experiment 1) ===
+      const ammeterX = left + 10;
+      const ammeterCY = (batY + sliderY) / 2;
+      const ammR = 26;
+      // Wire from resistor left down to ammeter top
       ctx.strokeStyle = wireColor;
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(resLeftX, sliderY);
-      ctx.lineTo(ammeterX, sliderY);
+      ctx.lineTo(left + 10, sliderY);
+      ctx.lineTo(left + 10, ammeterCY + ammR);
+      ctx.stroke();
+      // Wire from ammeter bottom up to battery
+      ctx.beginPath();
+      ctx.moveTo(left + 10, ammeterCY - ammR);
+      ctx.lineTo(left + 10, batY);
       ctx.stroke();
 
-      // === Ammeter on left side ===
+      // Ammeter circle
       ctx.fillStyle = '#dcfce7';
       ctx.strokeStyle = '#16a34a';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(ammeterX, ammeterY, 22, 0, Math.PI * 2);
+      ctx.arc(ammeterX, ammeterCY, ammR, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = '#15803d';
-      ctx.font = 'bold 15px sans-serif';
+      ctx.font = 'bold 16px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('A', ammeterX, ammeterY + 6);
+      ctx.fillText('A', ammeterX, ammeterCY + 6);
       // Label (above circle)
       ctx.fillStyle = '#4b5563';
       ctx.font = '11px sans-serif';
-      ctx.fillText('电流表', ammeterX, ammeterY - 28);
-      // Reading (to the left of circle)
-      const e2AText = `${(st.current * 1000).toFixed(1)}mA`;
+      ctx.textAlign = 'left';
+      ctx.fillText('电流表', ammeterX - 16, ammeterCY - ammR - 6);
+      // Reading (to the right of circle, outside)
+      const e2AText = st.switchClosed ? `${(st.current * 1000).toFixed(1)}mA` : '0.0mA';
       ctx.font = 'bold 13px monospace';
+      ctx.textAlign = 'left';
       const e2ATW = ctx.measureText(e2AText).width;
       ctx.fillStyle = '#dcfce7';
-      ctx.fillRect(ammeterX - 22 - e2ATW - 8, ammeterY - 10, e2ATW + 14, 22);
+      ctx.fillRect(ammeterX + ammR + 4, ammeterCY - 10, e2ATW + 10, 20);
       ctx.strokeStyle = '#16a34a';
       ctx.lineWidth = 1.5;
-      ctx.strokeRect(ammeterX - 22 - e2ATW - 8, ammeterY - 10, e2ATW + 14, 22);
+      ctx.strokeRect(ammeterX + ammR + 4, ammeterCY - 10, e2ATW + 10, 20);
       ctx.fillStyle = '#15803d';
-      ctx.textAlign = 'right';
-      ctx.fillText(e2AText, ammeterX - 26, ammeterY + 5);
-
-      // === Left wire up from ammeter to top ===
-      ctx.strokeStyle = wireColor;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(ammeterX, ammeterY - 22);
-      ctx.lineTo(ammeterX, batY);
-      ctx.stroke();
+      ctx.fillText(e2AText, ammeterX + ammR + 9, ammeterCY + 5);
 
       // === Top wire from left to battery positive ===
       ctx.beginPath();
@@ -889,16 +890,20 @@ function OhmExperiment2({ onSwitchExperiment }: { onSwitchExperiment: () => void
       // Label
       ctx.fillStyle = '#4b5563';
       ctx.font = '11px sans-serif';
-      ctx.fillText('电压表', voltmeterX, voltmeterY + 38);
-      // Highlighted reading
+      ctx.textAlign = 'left';
+      ctx.fillText('电压表', voltmeterX - 22, voltmeterY + 38);
+      // Highlighted reading - to the right of "电压表" label
+      const vmLabelWidth = ctx.measureText('电压表').width;
       ctx.fillStyle = '#fef3c7';
-      ctx.fillRect(voltmeterX - 35, voltmeterY + 42, 70, 20);
+      ctx.fillRect(voltmeterX - 22 + vmLabelWidth + 4, voltmeterY + 26, 70, 18);
       ctx.strokeStyle = '#f59e0b';
       ctx.lineWidth = 1.5;
-      ctx.strokeRect(voltmeterX - 35, voltmeterY + 42, 70, 20);
+      ctx.strokeRect(voltmeterX - 22 + vmLabelWidth + 4, voltmeterY + 26, 70, 18);
       ctx.fillStyle = '#92400e';
-      ctx.font = 'bold 13px monospace';
-      ctx.fillText(`${st.voltageAcrossR.toFixed(2)}V`, voltmeterX, voltmeterY + 57);
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${st.voltageAcrossR.toFixed(2)}V`, voltmeterX - 22 + vmLabelWidth + 39, voltmeterY + 39);
+      ctx.textAlign = 'left';
       // Dashed wires from voltmeter to resistor ends
       ctx.setLineDash([4, 4]);
       ctx.strokeStyle = '#93c5fd';
@@ -915,7 +920,7 @@ function OhmExperiment2({ onSwitchExperiment }: { onSwitchExperiment: () => void
 
       // === Electron animation ===
       if (st.switchClosed && st.current > 0.001) {
-        const electronSpeed = st.current * 80;
+        const electronSpeed = st.current * 0.012;
         const time = timeRef.current * electronSpeed;
         ctx.fillStyle = '#3b82f6';
         // Main circuit path: battery+ → right → down → slider → resistor → ammeter → up → battery-
@@ -1050,7 +1055,7 @@ function OhmExperiment2({ onSwitchExperiment }: { onSwitchExperiment: () => void
       <div className="flex-1 grid lg:grid-cols-[1fr_280px] gap-3 min-h-0">
         {/* Left: Circuit canvas */}
         <div className="bg-white rounded-xl border border-blue-100 p-2 flex flex-col">
-          <canvas ref={canvasRef} width={700} height={400} className="w-full flex-1 rounded-lg cursor-pointer" onClick={handleCanvasClick} />
+          <canvas ref={canvasRef} width={700} height={440} className="w-full flex-1 rounded-lg cursor-pointer" onClick={handleCanvasClick} />
         </div>
 
         {/* Right: Data table + controls */}
