@@ -80,6 +80,34 @@ function OhmExperiment1() {
     stateRef.current = { switchClosed, current, sliderPosition, voltageAcrossR };
   });
 
+  // Canvas click handler - switch toggle & slider click
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    const left = 80, right = canvas.width - 80, topC = 80, midX = canvas.width / 2;
+    const switchX = left + (right - left) * 0.3;
+    const sliderX = midX + 40;
+    const sliderW = 100;
+
+    // Check if click is on switch area
+    if (x >= switchX - 40 && x <= switchX + 40 && y >= topC - 40 && y <= topC + 15) {
+      handleToggleSwitch();
+      return;
+    }
+
+    // Check if click is on slider rheostat area
+    if (x >= sliderX - sliderW / 2 - 10 && x <= sliderX + sliderW / 2 + 10 && y >= topC - 35 && y <= topC + 15) {
+      const pos = Math.max(0, Math.min(100, ((x - (sliderX - sliderW / 2)) / sliderW) * 100));
+      handleSliderChange(pos);
+    }
+  };
+
   // Canvas drawing
   useEffect(() => {
     const draw = () => {
@@ -101,7 +129,7 @@ function OhmExperiment1() {
       // Circuit layout coordinates
       const left = 80;
       const right = w - 80;
-      const top = 80;
+      const topC = 80;
       const bottom = h - 80;
       const midX = w / 2;
       const midY = h / 2;
@@ -114,58 +142,59 @@ function OhmExperiment1() {
       ctx.lineJoin = 'round';
 
       // Top wire: left to switch, switch to midX, midX to right
-      // Switch position
       const switchX = left + (right - left) * 0.3;
       ctx.beginPath();
-      ctx.moveTo(left, top);
-      ctx.lineTo(switchX - 25, top);
+      ctx.moveTo(left, topC);
+      ctx.lineTo(switchX - 25, topC);
       ctx.stroke();
 
+      // Switch - clickable area highlight
+      ctx.fillStyle = st.switchClosed ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)';
+      ctx.fillRect(switchX - 35, topC - 35, 70, 45);
       // Switch
       if (st.switchClosed) {
         ctx.beginPath();
-        ctx.moveTo(switchX - 25, top);
-        ctx.lineTo(switchX + 25, top);
+        ctx.moveTo(switchX - 25, topC);
+        ctx.lineTo(switchX + 25, topC);
         ctx.stroke();
-        // Switch dot
         ctx.fillStyle = '#22c55e';
         ctx.beginPath();
-        ctx.arc(switchX - 25, top, 5, 0, Math.PI * 2);
+        ctx.arc(switchX - 25, topC, 6, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(switchX + 25, top, 5, 0, Math.PI * 2);
+        ctx.arc(switchX + 25, topC, 6, 0, Math.PI * 2);
         ctx.fill();
       } else {
         ctx.beginPath();
-        ctx.moveTo(switchX - 25, top);
-        ctx.lineTo(switchX + 15, top - 25);
+        ctx.moveTo(switchX - 25, topC);
+        ctx.lineTo(switchX + 15, topC - 25);
         ctx.stroke();
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
-        ctx.arc(switchX - 25, top, 5, 0, Math.PI * 2);
+        ctx.arc(switchX - 25, topC, 6, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = '#94a3b8';
         ctx.beginPath();
-        ctx.arc(switchX + 25, top, 5, 0, Math.PI * 2);
+        ctx.arc(switchX + 25, topC, 6, 0, Math.PI * 2);
         ctx.fill();
       }
       // Switch label
       ctx.fillStyle = '#374151';
       ctx.font = 'bold 13px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('S', switchX, top - 30);
+      ctx.fillText(st.switchClosed ? 'S 闭合' : 'S 断开', switchX, topC - 38);
 
       // Top wire continues
       ctx.strokeStyle = wireColor;
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(switchX + 25, top);
-      ctx.lineTo(right, top);
+      ctx.moveTo(switchX + 25, topC);
+      ctx.lineTo(right, topC);
       ctx.stroke();
 
       // Right wire: top to bottom
       ctx.beginPath();
-      ctx.moveTo(right, top);
+      ctx.moveTo(right, topC);
       ctx.lineTo(right, bottom);
       ctx.stroke();
 
@@ -178,45 +207,38 @@ function OhmExperiment1() {
       // Left wire: bottom to top
       ctx.beginPath();
       ctx.moveTo(left, bottom);
-      ctx.lineTo(left, top);
+      ctx.lineTo(left, topC);
       ctx.stroke();
 
       // Battery on left side
       const batY = midY;
       ctx.strokeStyle = '#374151';
       ctx.lineWidth = 3;
-      // Positive terminal (longer line)
       ctx.beginPath();
       ctx.moveTo(left - 15, batY - 12);
       ctx.lineTo(left + 15, batY - 12);
       ctx.stroke();
-      // Negative terminal (shorter line)
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(left - 8, batY + 12);
       ctx.lineTo(left + 8, batY + 12);
       ctx.stroke();
-      // Plus/minus
       ctx.fillStyle = '#dc2626';
       ctx.font = 'bold 14px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('+', left - 25, batY - 8);
       ctx.fillStyle = '#2563eb';
       ctx.fillText('−', left - 25, batY + 16);
-      // Battery label
       ctx.fillStyle = '#92400e';
       ctx.font = '12px sans-serif';
       ctx.fillText(`${emf}V`, left, batY + 35);
 
       // Fixed resistor on right side
       const resY = midY - 30;
-      const resW = 20;
       const resH = 60;
-      ctx.fillStyle = '#fef2f2';
+      const resX = right;
       ctx.strokeStyle = '#dc2626';
       ctx.lineWidth = 2;
-      const resX = right;
-      // Zigzag resistor symbol
       ctx.beginPath();
       ctx.moveTo(resX, resY - resH / 2);
       for (let i = 0; i < 6; i++) {
@@ -226,120 +248,132 @@ function OhmExperiment1() {
       }
       ctx.lineTo(resX, resY + resH / 2);
       ctx.stroke();
-      // Resistor label
       ctx.fillStyle = '#991b1b';
       ctx.font = 'bold 12px sans-serif';
       ctx.textAlign = 'left';
       ctx.fillText(`R=${fixedResistance}Ω`, resX + 20, resY + 4);
 
-      // Slider rheostat on top wire (between switch and right)
+      // Slider rheostat on top wire - clickable area highlight
       const sliderX = midX + 40;
       const sliderW = 100;
       const sliderH = 16;
+      ctx.fillStyle = 'rgba(67,56,202,0.06)';
+      ctx.fillRect(sliderX - sliderW / 2 - 5, topC - 35, sliderW + 10, 50);
       // Draw rheostat body
       ctx.fillStyle = '#e0e7ff';
       ctx.strokeStyle = '#4338ca';
       ctx.lineWidth = 2;
-      ctx.fillRect(sliderX - sliderW / 2, top - sliderH / 2 - 5, sliderW, sliderH);
-      ctx.strokeRect(sliderX - sliderW / 2, top - sliderH / 2 - 5, sliderW, sliderH);
-      // Coil pattern
+      ctx.fillRect(sliderX - sliderW / 2, topC - sliderH / 2 - 5, sliderW, sliderH);
+      ctx.strokeRect(sliderX - sliderW / 2, topC - sliderH / 2 - 5, sliderW, sliderH);
       ctx.strokeStyle = '#6366f1';
       ctx.lineWidth = 1.5;
       for (let i = 0; i < 8; i++) {
         const cx2 = sliderX - sliderW / 2 + 8 + i * (sliderW - 16) / 7;
         ctx.beginPath();
-        ctx.arc(cx2, top - 5, 5, Math.PI, 0);
+        ctx.arc(cx2, topC - 5, 5, Math.PI, 0);
         ctx.stroke();
       }
       // Slider arrow
       const arrowX = sliderX - sliderW / 2 + (st.sliderPosition / 100) * sliderW;
       ctx.fillStyle = '#4338ca';
       ctx.beginPath();
-      ctx.moveTo(arrowX, top - 25);
-      ctx.lineTo(arrowX - 8, top - 15);
-      ctx.lineTo(arrowX + 8, top - 15);
+      ctx.moveTo(arrowX, topC - 28);
+      ctx.lineTo(arrowX - 10, topC - 15);
+      ctx.lineTo(arrowX + 10, topC - 15);
       ctx.closePath();
       ctx.fill();
       ctx.beginPath();
-      ctx.moveTo(arrowX, top - 15);
-      ctx.lineTo(arrowX, top - 5);
+      ctx.moveTo(arrowX, topC - 15);
+      ctx.lineTo(arrowX, topC - 5);
       ctx.stroke();
       // Slider label
       ctx.fillStyle = '#4338ca';
       ctx.font = '11px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('滑动变阻器', sliderX, top - 30);
+      ctx.fillText('点击调节变阻器', sliderX, topC - 32);
 
-      // Voltmeter - across fixed resistor (parallel, on the right)
-      const voltmeterX = right + 40;
+      // Voltmeter - across fixed resistor (highlighted reading)
+      const voltmeterX = right + 50;
       const voltmeterY = midY - 30;
       ctx.fillStyle = '#dbeafe';
       ctx.strokeStyle = '#2563eb';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(voltmeterX, voltmeterY, 24, 0, Math.PI * 2);
+      ctx.arc(voltmeterX, voltmeterY, 28, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = '#1e40af';
-      ctx.font = 'bold 14px sans-serif';
+      ctx.font = 'bold 16px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('V', voltmeterX, voltmeterY + 5);
-      // Voltmeter reading
-      ctx.font = 'bold 12px monospace';
+      ctx.fillText('V', voltmeterX, voltmeterY + 6);
+      // Voltmeter reading - highlighted
+      const vReading = st.voltageAcrossR.toFixed(2);
       ctx.fillStyle = '#1e40af';
-      ctx.fillText(`${st.voltageAcrossR.toFixed(2)}V`, voltmeterX, voltmeterY + 38);
+      ctx.font = 'bold 16px monospace';
+      const vText = `${vReading}V`;
+      const vTW = ctx.measureText(vText).width;
+      ctx.fillStyle = 'rgba(37,99,235,0.12)';
+      ctx.fillRect(voltmeterX - vTW / 2 - 6, voltmeterY + 30, vTW + 12, 22);
+      ctx.fillStyle = '#1e40af';
+      ctx.fillText(vText, voltmeterX, voltmeterY + 47);
       // Voltmeter wires (dashed)
       ctx.setLineDash([4, 4]);
       ctx.strokeStyle = '#93c5fd';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(voltmeterX - 24, voltmeterY);
-      ctx.lineTo(right + 5, top + 5);
+      ctx.moveTo(voltmeterX - 28, voltmeterY);
+      ctx.lineTo(right + 5, topC + 5);
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(voltmeterX - 24, voltmeterY);
+      ctx.moveTo(voltmeterX - 28, voltmeterY);
       ctx.lineTo(right + 5, bottom - 5);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Ammeter - on left side, below battery
+      // Ammeter - on left side, below battery (highlighted reading)
       const ammeterY = batY + 60;
       ctx.fillStyle = '#dcfce7';
       ctx.strokeStyle = '#16a34a';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(left, ammeterY, 22, 0, Math.PI * 2);
+      ctx.arc(left, ammeterY, 26, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = '#15803d';
-      ctx.font = 'bold 14px sans-serif';
+      ctx.font = 'bold 16px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('A', left, ammeterY + 5);
-      // Ammeter reading
-      ctx.font = 'bold 12px monospace';
-      ctx.fillText(`${(st.current * 1000).toFixed(1)}mA`, left, ammeterY + 38);
+      ctx.fillText('A', left, ammeterY + 6);
+      // Ammeter reading - highlighted
+      const aReading = (st.current * 1000).toFixed(1);
+      ctx.font = 'bold 16px monospace';
+      const aText = `${aReading}mA`;
+      const aTW = ctx.measureText(aText).width;
+      ctx.fillStyle = 'rgba(22,163,74,0.12)';
+      ctx.fillRect(left - aTW / 2 - 6, ammeterY + 30, aTW + 12, 22);
+      ctx.fillStyle = '#15803d';
+      ctx.fillText(aText, left, ammeterY + 47);
 
       // Electron animation when switch is closed
       if (st.switchClosed && st.current > 0.001) {
         const electronSpeed = st.current * 30;
         const time = timeRef.current * electronSpeed;
         ctx.fillStyle = '#3b82f6';
-        const perimeter = 2 * (right - left + bottom - top);
+        const perimeter = 2 * (right - left + bottom - topC);
         for (let i = 0; i < 12; i++) {
           const t = ((time + i * perimeter / 12) % perimeter) / perimeter;
           let ex: number, ey: number;
           const topLen = right - left;
-          const rightLen = bottom - top;
+          const rightLen = bottom - topC;
           const bottomLen = right - left;
-          const leftLen = bottom - top;
+          const leftLen = bottom - topC;
           const total = topLen + rightLen + bottomLen + leftLen;
           const pos = t * total;
           if (pos < topLen) {
             ex = left + pos;
-            ey = top;
+            ey = topC;
           } else if (pos < topLen + rightLen) {
             ex = right;
-            ey = top + (pos - topLen);
+            ey = topC + (pos - topLen);
           } else if (pos < topLen + rightLen + bottomLen) {
             ex = right - (pos - topLen - rightLen);
             ey = bottom;
@@ -366,17 +400,15 @@ function OhmExperiment1() {
     setDataRecords(prev => [...prev, { voltage: parseFloat(voltageAcrossR.toFixed(2)), current: parseFloat((current * 1000).toFixed(1)) }]);
   };
 
-  const handleCloseSwitch = () => {
-    if (!switchClosed) {
-      setSwitchClosed(true);
-      // Auto record first data point after a short delay
+  const handleToggleSwitch = () => {
+    const newClosed = !switchClosed;
+    setSwitchClosed(newClosed);
+    if (newClosed && dataRecords.length === 0) {
       setTimeout(() => {
         setDataRecords(prev => {
           const v = parseFloat((emf * fixedResistance / (fixedResistance + 50 * (1 - sliderPosition / 100))).toFixed(2));
           const i = parseFloat((emf / (fixedResistance + 50 * (1 - sliderPosition / 100)) * 1000).toFixed(1));
-          if (prev.length === 0) {
-            return [...prev, { voltage: v, current: i }];
-          }
+          if (prev.length === 0) return [...prev, { voltage: v, current: i }];
           return prev;
         });
       }, 300);
@@ -386,7 +418,6 @@ function OhmExperiment1() {
   const handleSliderChange = (val: number) => {
     setSliderPosition(val);
     if (switchClosed) {
-      // Auto record if different from last
       const newSliderR = 50 * (1 - val / 100);
       const newTotalR = fixedResistance + newSliderR;
       const newCurrent = emf / newTotalR;
@@ -416,26 +447,26 @@ function OhmExperiment1() {
         {/* Left: Circuit canvas and controls */}
         <div className="space-y-4">
           <div className="bg-white rounded-xl border border-amber-100 p-3">
-            <canvas ref={canvasRef} width={700} height={400} className="w-full rounded-lg" />
+            <canvas ref={canvasRef} width={700} height={400} className="w-full rounded-lg cursor-pointer" onClick={handleCanvasClick} />
           </div>
           <div className="bg-white rounded-xl border border-amber-100 p-4 space-y-4">
-            <div className="flex items-center gap-4">
-              {/* Switch button */}
+            <div className="flex items-center gap-4 flex-wrap">
+              {/* Switch toggle button */}
               <button
-                onClick={handleCloseSwitch}
-                disabled={switchClosed}
-                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all ${
+                onClick={handleToggleSwitch}
+                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-md ${
                   switchClosed
-                    ? 'bg-green-100 text-green-700 cursor-default'
-                    : 'bg-amber-500 text-white hover:bg-amber-600 shadow-md'
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'bg-green-500 text-white hover:bg-green-600'
                 }`}
               >
-                {switchClosed ? '开关已闭合 ✓' : '闭合开关 S'}
+                {switchClosed ? '断开开关 S' : '闭合开关 S'}
               </button>
+              <span className="text-xs text-gray-400">💡 也可点击电路图中的开关切换</span>
 
               {/* Slider rheostat */}
-              <div className="flex-1">
-                <label className="text-xs text-gray-500 font-medium block mb-1">调节滑动变阻器（改变电压）</label>
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-xs text-gray-500 font-medium block mb-1">调节滑动变阻器（改变电压）<span className="text-indigo-400">也可点击电路图</span></label>
                 <input
                   type="range" min={0} max={100} step={1}
                   value={sliderPosition}
@@ -500,20 +531,20 @@ function OhmExperiment1() {
             </table>
           </div>
 
-          {/* Current readings */}
+          {/* Current readings - highlighted */}
           {switchClosed && (
-            <div className="bg-amber-50 rounded-xl border border-amber-200 p-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">电压表示数</span>
-                <span className="font-mono font-bold text-amber-600">{voltageAcrossR.toFixed(2)} V</span>
+            <div className="bg-gradient-to-br from-blue-50 to-amber-50 rounded-xl border-2 border-blue-200 p-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600 text-sm">电压表</span>
+                <span className="font-mono font-black text-2xl text-blue-600">{voltageAcrossR.toFixed(2)} <span className="text-base">V</span></span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">电流表示数</span>
-                <span className="font-mono font-bold text-green-600">{(current * 1000).toFixed(1)} mA</span>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600 text-sm">电流表</span>
+                <span className="font-mono font-black text-2xl text-green-600">{(current * 1000).toFixed(1)} <span className="text-base">mA</span></span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">已记录数据</span>
-                <span className={`font-bold ${dataRecords.length >= 3 ? 'text-green-600' : 'text-gray-600'}`}>{dataRecords.length} / 3</span>
+              <div className="border-t border-blue-100 pt-2 flex justify-between items-center">
+                <span className="text-gray-500 text-sm">已记录数据</span>
+                <span className={`font-bold text-lg ${dataRecords.length >= 3 ? 'text-green-600' : 'text-gray-600'}`}>{dataRecords.length} / 3</span>
               </div>
             </div>
           )}
@@ -789,6 +820,16 @@ function OhmExperiment2() {
       ctx.fillText('V', voltmeterX, voltmeterY + 5);
       ctx.font = 'bold 12px monospace';
       ctx.fillText(`${st.voltageAcrossR.toFixed(2)}V`, voltmeterX, voltmeterY + 38);
+      // Highlighted voltage reading
+      ctx.fillStyle = '#fef3c7';
+      ctx.fillRect(voltmeterX - 35, voltmeterY + 42, 70, 20);
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(voltmeterX - 35, voltmeterY + 42, 70, 20);
+      ctx.fillStyle = '#92400e';
+      ctx.font = 'bold 13px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${st.voltageAcrossR.toFixed(2)}V`, voltmeterX, voltmeterY + 57);
       ctx.setLineDash([4, 4]);
       ctx.strokeStyle = '#93c5fd';
       ctx.lineWidth = 1.5;
@@ -817,6 +858,16 @@ function OhmExperiment2() {
       ctx.fillText('A', left, ammeterY + 5);
       ctx.font = 'bold 12px monospace';
       ctx.fillText(`${(st.current * 1000).toFixed(1)}mA`, left, ammeterY + 38);
+      // Highlighted current reading
+      ctx.fillStyle = '#dcfce7';
+      ctx.fillRect(left - 40, ammeterY + 42, 80, 20);
+      ctx.strokeStyle = '#16a34a';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(left - 40, ammeterY + 42, 80, 20);
+      ctx.fillStyle = '#15803d';
+      ctx.font = 'bold 13px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${(st.current * 1000).toFixed(1)}mA`, left, ammeterY + 57);
 
       // Electron animation
       if (st.switchClosed && st.current > 0.001) {
@@ -859,9 +910,10 @@ function OhmExperiment2() {
     return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
   }, []);
 
-  const handleCloseSwitch = () => {
-    if (!switchClosed) {
-      setSwitchClosed(true);
+  const handleToggleSwitch = () => {
+    const newClosed = !switchClosed;
+    setSwitchClosed(newClosed);
+    if (newClosed && dataRecords.length === 0) {
       setTimeout(() => {
         const newSliderR = 50 * (1 - sliderPosition / 100);
         const newTotalR = currentResistance + newSliderR;
@@ -870,6 +922,36 @@ function OhmExperiment2() {
         setTargetVoltage(parseFloat(newVoltage.toFixed(2)));
         setDataRecords([{ resistance: currentResistance, current: parseFloat((newCurrent * 1000).toFixed(1)) }]);
       }, 300);
+    }
+  };
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    const w = canvas.width;
+    const midX = w / 2;
+    const sliderX = midX + 40;
+    const sliderW = 100;
+    const top = 80;
+
+    // Check switch click
+    const switchX = 80 + (w - 160) * 0.3;
+    if (Math.abs(x - switchX) < 35 && Math.abs(y - top) < 35) {
+      handleToggleSwitch();
+      return;
+    }
+
+    // Check slider click
+    if (!switchClosed) return;
+    if (y >= top - 35 && y <= top + 10 && x >= sliderX - sliderW / 2 - 10 && x <= sliderX + sliderW / 2 + 10) {
+      const relX = x - (sliderX - sliderW / 2);
+      const newPos = Math.max(0, Math.min(100, (relX / sliderW) * 100));
+      setSliderPosition(newPos);
     }
   };
 
@@ -910,21 +992,20 @@ function OhmExperiment2() {
         {/* Left: Circuit canvas and controls */}
         <div className="space-y-4">
           <div className="bg-white rounded-xl border border-blue-100 p-3">
-            <canvas ref={canvasRef} width={700} height={400} className="w-full rounded-lg" />
+            <canvas ref={canvasRef} width={700} height={400} className="w-full rounded-lg cursor-pointer" onClick={handleCanvasClick} />
           </div>
           <div className="bg-white rounded-xl border border-blue-100 p-4 space-y-4">
             <div className="flex items-center gap-4 flex-wrap">
               {/* Switch button */}
               <button
-                onClick={handleCloseSwitch}
-                disabled={switchClosed}
+                onClick={handleToggleSwitch}
                 className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all ${
                   switchClosed
-                    ? 'bg-green-100 text-green-700 cursor-default'
+                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
                     : 'bg-blue-500 text-white hover:bg-blue-600 shadow-md'
                 }`}
               >
-                {switchClosed ? '开关已闭合 ✓' : '闭合开关 S'}
+                {switchClosed ? '断开开关 S' : '闭合开关 S'}
               </button>
 
               {/* Change resistor button */}
@@ -1008,13 +1089,13 @@ function OhmExperiment2() {
           {/* Current readings */}
           {switchClosed && (
             <div className="bg-blue-50 rounded-xl border border-blue-200 p-4 space-y-2">
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500">电压表示数</span>
-                <span className="font-mono font-bold text-blue-600">{voltageAcrossR.toFixed(2)} V</span>
+                <span className="font-mono font-bold text-xl text-amber-600 bg-amber-50 px-3 py-1 rounded-lg border border-amber-200">{voltageAcrossR.toFixed(2)} V</span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500">电流表示数</span>
-                <span className="font-mono font-bold text-green-600">{(current * 1000).toFixed(1)} mA</span>
+                <span className="font-mono font-bold text-xl text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200">{(current * 1000).toFixed(1)} mA</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">当前电阻</span>
