@@ -355,13 +355,13 @@ function OhmExperiment1({ onSwitchExperiment }: { onSwitchExperiment: () => void
       ctx.fillText('电压表', vmCenterX, vmCenterY + 38);
 
       // ======== READINGS ========
-      // Ammeter reading - inside ammeter circle (circuit internal)
+      // Ammeter reading - to the right of ammeter circle
       if (st.switchClosed) {
         const aReading = (st.current * 1000).toFixed(1);
-        ctx.font = 'bold 11px monospace';
+        ctx.font = 'bold 13px monospace';
         ctx.fillStyle = '#15803d';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${aReading}mA`, left, ammeterY + 18);
+        ctx.textAlign = 'left';
+        ctx.fillText(`${aReading}mA`, left + 24, ammeterY + 5);
       }
 
       // Voltmeter reading - to the right of "电压表" label
@@ -382,7 +382,7 @@ function OhmExperiment1({ onSwitchExperiment }: { onSwitchExperiment: () => void
 
       // ======== ELECTRON ANIMATION when switch is closed ========
       if (st.switchClosed && st.current > 0.001) {
-        const electronSpeed = st.current * 30;
+        const electronSpeed = st.current * 80;
         const time = timeRef.current * electronSpeed;
         ctx.fillStyle = '#3b82f6';
         // Path following the circuit: Battery- → right → down → slider → left → resistor → left → ammeter → up → Battery+
@@ -543,10 +543,6 @@ function OhmExperiment1({ onSwitchExperiment }: { onSwitchExperiment: () => void
               <div className="flex justify-between items-center">
                 <span className="text-gray-600 text-sm">电流表</span>
                 <span className="font-mono font-black text-xl text-green-600">{(current * 1000).toFixed(1)} <span className="text-sm">mA</span></span>
-              </div>
-              <div className="border-t border-blue-100 pt-2 flex justify-between items-center">
-                <span className="text-gray-500 text-sm">数据组数</span>
-                <span className={`font-bold text-base ${dataRecords.length >= 3 ? 'text-green-600' : 'text-gray-600'}`}>{dataRecords.length} / 3</span>
               </div>
             </div>
           )}
@@ -914,7 +910,7 @@ function OhmExperiment2({ onSwitchExperiment }: { onSwitchExperiment: () => void
 
       // === Electron animation ===
       if (st.switchClosed && st.current > 0.001) {
-        const electronSpeed = st.current * 30;
+        const electronSpeed = st.current * 80;
         const time = timeRef.current * electronSpeed;
         ctx.fillStyle = '#3b82f6';
         // Main circuit path: battery+ → right → down → slider → resistor → ammeter → up → battery-
