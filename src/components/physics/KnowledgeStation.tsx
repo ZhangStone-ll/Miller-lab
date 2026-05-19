@@ -415,8 +415,22 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
   const isPlayingRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // TTS audio URI cache: key is the preprocessed speech text
-  const ttsCacheRef = useRef<Map<string, string>>(new Map());
+  // TTS audio URI cache: persisted to localStorage for cross-page survival
+  const CACHE_KEY = 'physics-tts-cache';
+  const getTTSCache = (): Map<string, string> => {
+    if (typeof window === 'undefined') return new Map();
+    try {
+      const stored = localStorage.getItem(CACHE_KEY);
+      if (stored) return new Map(JSON.parse(stored));
+    } catch { /* ignore */ }
+    return new Map();
+  };
+  const saveTTSCache = (cache: Map<string, string>) => {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(Array.from(cache.entries())));
+    } catch { /* ignore */ }
+  };
+  const ttsCacheRef = useRef<Map<string, string>>(getTTSCache());
 
   // Load editor data from localStorage and merge
   useEffect(() => {
@@ -491,6 +505,7 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
         setIsLoading(false);
         // Remove bad cache entry
         ttsCacheRef.current.delete(processedText);
+        saveTTSCache(ttsCacheRef.current);
         onEnd?.();
       });
 
@@ -504,6 +519,7 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
         setIsLoading(false);
         // Remove bad cache entry
         ttsCacheRef.current.delete(processedText);
+        saveTTSCache(ttsCacheRef.current);
         onEnd?.();
       });
 
@@ -528,8 +544,9 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
 
         const audioUri = data.audioUri as string;
 
-        // Cache the audio URI
+        // Cache the audio URI (persist to localStorage)
         ttsCacheRef.current.set(processedText, audioUri);
+        saveTTSCache(ttsCacheRef.current);
 
         const audio = new Audio(audioUri);
         audioRef.current = audio;
@@ -553,6 +570,7 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
           setIsPlaying(false);
           setIsLoading(false);
           ttsCacheRef.current.delete(processedText);
+        saveTTSCache(ttsCacheRef.current);
           onEnd?.();
         });
 
@@ -565,6 +583,7 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
           setIsPlaying(false);
           setIsLoading(false);
           ttsCacheRef.current.delete(processedText);
+        saveTTSCache(ttsCacheRef.current);
           onEnd?.();
         });
       })
@@ -686,17 +705,20 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
             isVideoFile ? (
               <div className="w-full aspect-video bg-black rounded-t-xl overflow-hidden">
                 <video
+                  key={videoUrl}
                   src={videoUrl}
                   className="w-full h-full object-contain"
                   loop
-                  autoPlay={isPlaying}
+                  autoPlay
                   muted={false}
                   controls={false}
+                  playsInline
                 />
               </div>
             ) : (
               <div className="w-full aspect-video bg-gray-100 rounded-t-xl overflow-hidden flex items-center justify-center">
                 <img
+                  key={videoUrl}
                   src={videoUrl}
                   alt="教学图片"
                   className="max-w-full max-h-full object-contain"
@@ -704,7 +726,7 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
               </div>
             )
           ) : (
-            <AnimationScene type={chapter.videoType} isPlaying={isPlaying} />
+            <AnimationScene key={`anim-${currentPage}`} type={chapter.videoType} isPlaying={isPlaying} />
           )}
         </div>
 
