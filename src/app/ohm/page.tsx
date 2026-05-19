@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import AIAssistant from '@/components/physics/AIAssistant';
 import KnowledgeStation from '@/components/physics/KnowledgeStation';
+import ElectronRunner from '@/components/physics/ElectronRunner';
+import VoltageTowerDefense from '@/components/physics/VoltageTowerDefense';
 import { ohmChapters } from '@/lib/physics-data';
 
 const tabs = [
@@ -1140,94 +1142,13 @@ function OhmExperiment2({ onSwitchExperiment }: { onSwitchExperiment: () => void
   );
 }
 
-// Simple Ohm's Law Games
+// Ohm's Law Games - 电子跑酷 + 电压塔防
 function OhmGames() {
   const [activeGame, setActiveGame] = useState<string | null>(null);
 
-  // Game: Circuit Challenge
-  function CircuitChallenge() {
-    const [targetCurrent, setTargetCurrent] = useState(1.5);
-    const [voltage, setVoltage] = useState(6);
-    const [resistance, setResistance] = useState(10);
-    const current = voltage / resistance;
-    const isCorrect = Math.abs(current - targetCurrent) < 0.05;
-
-    const newChallenge = () => {
-      const targets = [0.5, 1, 1.5, 2, 2.5, 3];
-      setTargetCurrent(targets[Math.floor(Math.random() * targets.length)]);
-    };
-
-    return (
-      <div className="space-y-4">
-        <div className="bg-amber-50 rounded-xl p-4 text-center">
-          <p className="text-sm text-amber-700">🎯 目标电流: <span className="font-bold text-lg">{targetCurrent} A</span></p>
-          <p className="text-xs text-amber-500 mt-1">调整电压和电阻，使电流等于目标值</p>
-        </div>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs text-gray-500">电压: {voltage}V</label>
-            <input type="range" min={1} max={24} step={0.5} value={voltage}
-              onChange={(e) => setVoltage(Number(e.target.value))} className="w-full accent-amber-500" />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500">电阻: {resistance}Ω</label>
-            <input type="range" min={1} max={100} value={resistance}
-              onChange={(e) => setResistance(Number(e.target.value))} className="w-full accent-red-500" />
-          </div>
-        </div>
-        <div className="text-center">
-          <p className="text-lg font-mono">I = {voltage}/{resistance} = <span className={isCorrect ? 'text-green-600' : 'text-red-600'}>{current.toFixed(2)} A</span></p>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={newChallenge} className="flex-1 py-2.5 rounded-xl bg-amber-100 text-amber-700 font-medium hover:bg-amber-200">
-            🔄 新挑战
-          </button>
-          {isCorrect && <div className="flex-1 py-2.5 rounded-xl bg-green-500 text-white font-medium text-center">🎉 正确！</div>}
-        </div>
-      </div>
-    );
-  }
-
-  // Game: Power Quiz
-  function PowerQuiz() {
-    const [question, setQuestion] = useState({ u: 12, r: 4 });
-    const [answer, setAnswer] = useState('');
-    const [result, setResult] = useState<string | null>(null);
-
-    const correctCurrent = question.u / question.r;
-    const correctPower = question.u * correctCurrent;
-
-    const checkAnswer = () => {
-      const userPower = parseFloat(answer);
-      if (isNaN(userPower)) { setResult('请输入数字'); return; }
-      setResult(Math.abs(userPower - correctPower) < 1 ? '✅ 正确！' : `❌ 答案是 ${correctPower.toFixed(1)} W`);
-    };
-
-    return (
-      <div className="space-y-4">
-        <div className="bg-amber-50 rounded-xl p-4 text-center">
-          <p className="font-bold text-amber-800">一个电热器，电压 {question.u}V，电阻 {question.r}Ω</p>
-          <p className="text-sm text-amber-600">求电功率 P = ?</p>
-        </div>
-        <div className="flex gap-2">
-          <input type="number" value={answer} onChange={(e) => setAnswer(e.target.value)}
-            placeholder="输入功率(W)" className="flex-1 border rounded-lg px-3 py-2 text-sm" />
-          <button onClick={checkAnswer} className="px-4 py-2 rounded-lg bg-amber-500 text-white text-sm">确认</button>
-        </div>
-        {result && (
-          <div className={`p-3 rounded-lg text-sm ${result.startsWith('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-            {result}
-            <button onClick={() => { setQuestion({ u: Math.floor(Math.random() * 20) + 5, r: Math.floor(Math.random() * 20) + 2 }); setAnswer(''); setResult(null); }}
-              className="mt-2 w-full py-1.5 rounded bg-blue-500 text-white text-sm">下一题</button>
-          </div>
-        )}
-      </div>
-    );
-  }
-
   const games = [
-    { id: 'circuit', name: '电路挑战赛', icon: '⚡', desc: '调节参数达到目标电流' },
-    { id: 'power', name: '功率计算王', icon: '💡', desc: '计算用电器的功率' },
+    { id: 'runner', name: '电子跑酷', icon: '⚡', desc: '电压攀登者：欧姆定律大冒险', color: 'from-amber-400 to-yellow-300' },
+    { id: 'tower', name: '电压塔防', icon: '🏗️', desc: '放置电击塔，策略分配电压', color: 'from-cyan-500 to-blue-400' },
   ];
 
   if (!activeGame) {
@@ -1237,8 +1158,10 @@ function OhmGames() {
         <div className="grid md:grid-cols-2 gap-4">
           {games.map((game) => (
             <button key={game.id} onClick={() => setActiveGame(game.id)}
-              className="bg-white rounded-xl border-2 border-amber-100 p-5 text-center hover:border-amber-300 hover:shadow-md transition-all">
-              <div className="text-4xl mb-3">{game.icon}</div>
+              className="bg-white rounded-xl border-2 border-amber-100 p-5 text-center hover:border-amber-300 hover:shadow-md transition-all group">
+              <div className={`text-4xl mb-3 w-16 h-16 mx-auto rounded-xl bg-gradient-to-br ${game.color} flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform`}>
+                {game.icon}
+              </div>
               <h4 className="font-bold text-gray-800">{game.name}</h4>
               <p className="text-xs text-gray-500">{game.desc}</p>
             </button>
@@ -1250,9 +1173,11 @@ function OhmGames() {
 
   return (
     <div className="space-y-4">
-      <button onClick={() => setActiveGame(null)} className="text-sm text-gray-500 hover:text-amber-600">← 返回</button>
-      {activeGame === 'circuit' && <CircuitChallenge />}
-      {activeGame === 'power' && <PowerQuiz />}
+      <button onClick={() => setActiveGame(null)} className="text-sm text-gray-500 hover:text-amber-600 transition-colors">
+        ← 返回游戏选择
+      </button>
+      {activeGame === 'runner' && <ElectronRunner />}
+      {activeGame === 'tower' && <VoltageTowerDefense />}
     </div>
   );
 }
