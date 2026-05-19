@@ -14,33 +14,10 @@ const tabs = [
 
 // Ohm's Law Virtual Lab - Two Experiments
 function OhmLab() {
-  const [activeExperiment, setActiveExperiment] = useState<number | null>(null);
-
-  if (!activeExperiment) {
-    return (
-      <div className="space-y-6">
-        <p className="text-sm text-gray-500 text-center">选择一个实验开始探索欧姆定律</p>
-        <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-          <button onClick={() => setActiveExperiment(1)}
-            className="bg-white rounded-2xl border-2 border-amber-100 p-8 text-center hover:border-amber-400 hover:shadow-lg transition-all group">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-400 flex items-center justify-center text-white text-2xl mx-auto mb-4 shadow-md group-hover:scale-110 transition-transform">🔬</div>
-            <h4 className="font-bold text-gray-800 text-lg mb-2">实验一：电阻大小固定</h4>
-            <p className="text-sm text-gray-500">电阻恒定，调节电压，发现电流与电压的关系</p>
-          </button>
-          <button onClick={() => setActiveExperiment(2)}
-            className="bg-white rounded-2xl border-2 border-amber-100 p-8 text-center hover:border-amber-400 hover:shadow-lg transition-all group">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-2xl mx-auto mb-4 shadow-md group-hover:scale-110 transition-transform">🔬</div>
-            <h4 className="font-bold text-gray-800 text-lg mb-2">实验二：电压大小固定</h4>
-            <p className="text-sm text-gray-500">电压恒定，改变电阻，发现电流与电阻的关系</p>
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const [activeExperiment, setActiveExperiment] = useState<number>(1);
 
   return (
     <div className="space-y-4">
-      <button onClick={() => setActiveExperiment(null)} className="text-sm text-gray-500 hover:text-amber-600 transition-colors">← 返回实验选择</button>
       {activeExperiment === 1 && <OhmExperiment1 onSwitchExperiment={() => setActiveExperiment(2)} />}
       {activeExperiment === 2 && <OhmExperiment2 onSwitchExperiment={() => setActiveExperiment(1)} />}
     </div>
@@ -377,36 +354,31 @@ function OhmExperiment1({ onSwitchExperiment }: { onSwitchExperiment: () => void
       ctx.font = '11px sans-serif';
       ctx.fillText('电压表', vmCenterX, vmCenterY + 38);
 
-      // ======== READINGS OUTSIDE CIRCUIT (highlighted boxes) ========
-      // Ammeter reading - to the left of ammeter circle
-      const aReading = (st.current * 1000).toFixed(1);
-      const aText = `${aReading} mA`;
-      ctx.font = 'bold 15px monospace';
-      const aTW = ctx.measureText(aText).width;
-      ctx.fillStyle = 'rgba(22,163,74,0.12)';
-      const aBoxX = left - 50 - aTW;
-      const aBoxY = ammeterY - 10;
-      ctx.fillRect(aBoxX, aBoxY, aTW + 14, 22);
-      ctx.strokeStyle = '#16a34a';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(aBoxX, aBoxY, aTW + 14, 22);
-      ctx.fillStyle = '#15803d';
-      ctx.textAlign = 'left';
-      ctx.fillText(aText, aBoxX + 7, ammeterY + 4);
+      // ======== READINGS ========
+      // Ammeter reading - inside ammeter circle (circuit internal)
+      if (st.switchClosed) {
+        const aReading = (st.current * 1000).toFixed(1);
+        ctx.font = 'bold 11px monospace';
+        ctx.fillStyle = '#15803d';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${aReading}mA`, left, ammeterY + 18);
+      }
 
-      // Voltmeter reading - below voltmeter circle
-      const vReading = st.voltageAcrossR.toFixed(2);
+      // Voltmeter reading - to the right of "电压表" label
+      const vReading = st.switchClosed ? st.voltageAcrossR.toFixed(2) : '0.00';
       const vText = `${vReading} V`;
-      ctx.font = 'bold 16px monospace';
+      ctx.font = 'bold 13px monospace';
       const vTW = ctx.measureText(vText).width;
       ctx.fillStyle = 'rgba(37,99,235,0.12)';
-      ctx.fillRect(vmCenterX - vTW / 2 - 8, vmCenterY + 42, vTW + 16, 24);
+      const vBoxX = vmCenterX + 30;
+      const vBoxY = vmCenterY + 28;
+      ctx.fillRect(vBoxX, vBoxY, vTW + 12, 20);
       ctx.strokeStyle = '#2563eb';
       ctx.lineWidth = 1.5;
-      ctx.strokeRect(vmCenterX - vTW / 2 - 8, vmCenterY + 42, vTW + 16, 24);
+      ctx.strokeRect(vBoxX, vBoxY, vTW + 12, 20);
       ctx.fillStyle = '#1e40af';
-      ctx.textAlign = 'center';
-      ctx.fillText(vText, vmCenterX, vmCenterY + 59);
+      ctx.textAlign = 'left';
+      ctx.fillText(vText, vBoxX + 6, vmCenterY + 42);
 
       // ======== ELECTRON ANIMATION when switch is closed ========
       if (st.switchClosed && st.current > 0.001) {
@@ -521,7 +493,7 @@ function OhmExperiment1({ onSwitchExperiment }: { onSwitchExperiment: () => void
           <p className="text-xs text-amber-600 mt-0.5">🎯 电阻恒定，调节电压，发现电流与电压的关系 | 💡 点击电路图中开关和滑动变阻器操作</p>
         </div>
         <button onClick={onSwitchExperiment} className="shrink-0 px-4 py-2 rounded-xl text-xs font-medium bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 shadow-sm transition-all">
-          切换实验二 →
+          实验二：电压大小固定 →
         </button>
       </div>
 
@@ -573,7 +545,7 @@ function OhmExperiment1({ onSwitchExperiment }: { onSwitchExperiment: () => void
                 <span className="font-mono font-black text-xl text-green-600">{(current * 1000).toFixed(1)} <span className="text-sm">mA</span></span>
               </div>
               <div className="border-t border-blue-100 pt-2 flex justify-between items-center">
-                <span className="text-gray-500 text-sm">已记录数据</span>
+                <span className="text-gray-500 text-sm">数据组数</span>
                 <span className={`font-bold text-base ${dataRecords.length >= 3 ? 'text-green-600' : 'text-gray-600'}`}>{dataRecords.length} / 3</span>
               </div>
             </div>
@@ -1070,7 +1042,7 @@ function OhmExperiment2({ onSwitchExperiment }: { onSwitchExperiment: () => void
           <h3 className="font-bold text-amber-800 text-sm">实验二：电压大小固定</h3>
         </div>
         <button onClick={onSwitchExperiment} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-all">
-          切换到实验一 →
+          实验一：电阻大小固定 →
         </button>
       </div>
 
