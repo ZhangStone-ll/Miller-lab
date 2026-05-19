@@ -41,14 +41,14 @@ function OhmLab() {
   return (
     <div className="space-y-4">
       <button onClick={() => setActiveExperiment(null)} className="text-sm text-gray-500 hover:text-amber-600 transition-colors">← 返回实验选择</button>
-      {activeExperiment === 1 && <OhmExperiment1 />}
-      {activeExperiment === 2 && <OhmExperiment2 />}
+      {activeExperiment === 1 && <OhmExperiment1 onSwitchExperiment={() => setActiveExperiment(2)} />}
+      {activeExperiment === 2 && <OhmExperiment2 onSwitchExperiment={() => setActiveExperiment(1)} />}
     </div>
   );
 }
 
 // Experiment 1: Fixed Resistance, vary voltage
-function OhmExperiment1() {
+function OhmExperiment1({ onSwitchExperiment }: { onSwitchExperiment: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
   const timeRef = useRef(0);
@@ -335,10 +335,11 @@ function OhmExperiment1() {
       ctx.font = 'bold 16px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('A', left, ammeterY + 6);
-      // Ammeter label (to the left of the circle)
+      // Ammeter label (above the circle)
       ctx.font = '11px sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText('电流表', left - 34, ammeterY + 4);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#6b7280';
+      ctx.fillText('电流表', left, ammeterY - 24);
 
       // ======== VOLTMETER parallel across fixed resistor (vertical, standing) ========
       const vmCenterX = resX;
@@ -380,18 +381,18 @@ function OhmExperiment1() {
       // Ammeter reading - to the left of ammeter circle
       const aReading = (st.current * 1000).toFixed(1);
       const aText = `${aReading} mA`;
-      ctx.font = 'bold 16px monospace';
+      ctx.font = 'bold 15px monospace';
       const aTW = ctx.measureText(aText).width;
       ctx.fillStyle = 'rgba(22,163,74,0.12)';
-      const aBoxX = left - 34 - aTW - 16;
-      const aBoxY = ammeterY - 12;
-      ctx.fillRect(aBoxX, aBoxY, aTW + 16, 24);
+      const aBoxX = left - 50 - aTW;
+      const aBoxY = ammeterY - 10;
+      ctx.fillRect(aBoxX, aBoxY, aTW + 14, 22);
       ctx.strokeStyle = '#16a34a';
       ctx.lineWidth = 1.5;
-      ctx.strokeRect(aBoxX, aBoxY, aTW + 16, 24);
+      ctx.strokeRect(aBoxX, aBoxY, aTW + 14, 22);
       ctx.fillStyle = '#15803d';
       ctx.textAlign = 'left';
-      ctx.fillText(aText, aBoxX + 8, ammeterY + 5);
+      ctx.fillText(aText, aBoxX + 7, ammeterY + 4);
 
       // Voltmeter reading - below voltmeter circle
       const vReading = st.voltageAcrossR.toFixed(2);
@@ -499,116 +500,81 @@ function OhmExperiment1() {
   };
 
   return (
-    <div className="space-y-5">
-      {/* Experiment title and tips */}
-      <div className="bg-amber-50 rounded-xl border border-amber-200 p-4">
-        <h3 className="font-bold text-amber-800 text-lg mb-2">实验一：电阻大小固定</h3>
-        <p className="text-sm text-amber-700 mb-1">🎯 实验目标：电阻恒定，通过调节电压，你能发现电流与电压有什么关系吗？</p>
-        <p className="text-xs text-amber-600">💡 操作指引：闭合开关后，调节滑动变阻器，至少得到3组实验数据后可完成实验</p>
+    <div className="space-y-3">
+      {/* Conclusion Modal */}
+      {showConclusion && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 bg-black/30" onClick={() => setShowConclusion(false)}>
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border-2 border-green-300 p-6 text-center shadow-2xl max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <div className="text-3xl mb-2">🎉</div>
+            <h4 className="font-bold text-green-800 text-lg mb-2">实验结论</h4>
+            <p className="text-green-700 text-base">发现了吗？<strong>电阻恒定时，电流与电压成正比</strong></p>
+            <p className="text-sm text-green-600 mt-2">I = U / R，当 R 不变时，I 与 U 成正比关系</p>
+            <button onClick={() => setShowConclusion(false)} className="mt-4 px-6 py-2 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700">我知道了</button>
+          </div>
+        </div>
+      )}
+
+      {/* Title bar with quick switch */}
+      <div className="bg-amber-50 rounded-xl border border-amber-200 p-3 flex items-center justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <h3 className="font-bold text-amber-800 text-base">实验一：电阻大小固定</h3>
+          <p className="text-xs text-amber-600 mt-0.5">🎯 电阻恒定，调节电压，发现电流与电压的关系 | 💡 点击电路图中开关和滑动变阻器操作</p>
+        </div>
+        <button onClick={onSwitchExperiment} className="shrink-0 px-4 py-2 rounded-xl text-xs font-medium bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 shadow-sm transition-all">
+          切换实验二 →
+        </button>
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_340px] gap-5">
-        {/* Left: Circuit canvas and controls */}
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-amber-100 p-3">
-            <canvas ref={canvasRef} width={700} height={440} className="w-full rounded-lg cursor-pointer" onClick={handleCanvasClick} />
-          </div>
-          <div className="bg-white rounded-xl border border-amber-100 p-4 space-y-4">
-            <div className="flex items-center gap-4 flex-wrap">
-              {/* Switch toggle button */}
-              <button
-                onClick={handleToggleSwitch}
-                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-md ${
-                  switchClosed
-                    ? 'bg-red-500 text-white hover:bg-red-600'
-                    : 'bg-green-500 text-white hover:bg-green-600'
-                }`}
-              >
-                {switchClosed ? '断开开关 S' : '闭合开关 S'}
-              </button>
-              <span className="text-xs text-gray-400">💡 也可点击电路图中的开关切换</span>
-
-              {/* Slider rheostat */}
-              <div className="flex-1 min-w-[200px]">
-                <label className="text-xs text-gray-500 font-medium block mb-1">调节滑动变阻器（改变电压）<span className="text-indigo-400">也可点击电路图</span></label>
-                <input
-                  type="range" min={0} max={100} step={1}
-                  value={sliderPosition}
-                  onChange={(e) => handleSliderChange(Number(e.target.value))}
-                  disabled={!switchClosed}
-                  className={`w-full accent-indigo-500 ${!switchClosed ? 'opacity-50' : ''}`}
-                />
-                <div className="flex justify-between text-xs text-gray-400">
-                  <span>阻值最大</span>
-                  <span>阻值最小</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Record data button */}
-            {switchClosed && (
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handleRecordData}
-                  disabled={hasRecordedCurrentData}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    hasRecordedCurrentData
-                      ? 'bg-gray-100 text-gray-400 cursor-default'
-                      : 'bg-blue-500 text-white hover:bg-blue-600'
-                  }`}
-                >
-                  {hasRecordedCurrentData ? '已记录当前数据 ✓' : '手动记录数据'}
-                </button>
-                <span className="text-xs text-gray-400">调节变阻器后数据会自动记录</span>
-              </div>
-            )}
-          </div>
+      <div className="grid lg:grid-cols-[1fr_280px] gap-3">
+        {/* Left: Circuit canvas only */}
+        <div className="bg-white rounded-xl border border-amber-100 p-2">
+          <canvas ref={canvasRef} width={700} height={440} className="w-full rounded-lg cursor-pointer" onClick={handleCanvasClick} />
         </div>
 
         {/* Right: Data table and controls */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Data table */}
-          <div className="bg-white rounded-xl border border-amber-100 p-4">
-            <h4 className="font-bold text-gray-700 text-sm mb-3">📋 实验数据（R = {fixedResistance}Ω）</h4>
+          <div className="bg-white rounded-xl border border-amber-100 p-3">
+            <h4 className="font-bold text-gray-700 text-sm mb-2">📋 实验数据（R = {fixedResistance}Ω）</h4>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-amber-100">
-                  <th className="text-left py-2 text-gray-500 font-medium">序号</th>
-                  <th className="text-center py-2 text-amber-600 font-medium">电压 U(V)</th>
-                  <th className="text-center py-2 text-blue-600 font-medium">电流 I(mA)</th>
+                  <th className="text-left py-1.5 text-gray-500 font-medium">序号</th>
+                  <th className="text-center py-1.5 text-amber-600 font-medium">电压 U(V)</th>
+                  <th className="text-center py-1.5 text-blue-600 font-medium">电流 I(mA)</th>
                 </tr>
               </thead>
               <tbody>
                 {dataRecords.map((rec, idx) => (
                   <tr key={idx} className="border-b border-gray-50">
-                    <td className="py-2 text-gray-400">{idx + 1}</td>
-                    <td className="py-2 text-center font-mono font-bold text-amber-600">{rec.voltage}</td>
-                    <td className="py-2 text-center font-mono font-bold text-blue-600">{rec.current}</td>
+                    <td className="py-1.5 text-gray-400">{idx + 1}</td>
+                    <td className="py-1.5 text-center font-mono font-bold text-amber-600">{rec.voltage}</td>
+                    <td className="py-1.5 text-center font-mono font-bold text-blue-600">{rec.current}</td>
                   </tr>
                 ))}
                 {dataRecords.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="py-4 text-center text-gray-300 text-xs">闭合开关后开始记录数据</td>
+                    <td colSpan={3} className="py-3 text-center text-gray-300 text-xs">闭合开关后开始记录数据</td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
 
-          {/* Current readings - highlighted */}
+          {/* Current readings */}
           {switchClosed && (
-            <div className="bg-gradient-to-br from-blue-50 to-amber-50 rounded-xl border-2 border-blue-200 p-4 space-y-3">
+            <div className="bg-gradient-to-br from-blue-50 to-amber-50 rounded-xl border-2 border-blue-200 p-3 space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-gray-600 text-sm">电压表</span>
-                <span className="font-mono font-black text-2xl text-blue-600">{voltageAcrossR.toFixed(2)} <span className="text-base">V</span></span>
+                <span className="font-mono font-black text-xl text-blue-600">{voltageAcrossR.toFixed(2)} <span className="text-sm">V</span></span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600 text-sm">电流表</span>
-                <span className="font-mono font-black text-2xl text-green-600">{(current * 1000).toFixed(1)} <span className="text-base">mA</span></span>
+                <span className="font-mono font-black text-xl text-green-600">{(current * 1000).toFixed(1)} <span className="text-sm">mA</span></span>
               </div>
               <div className="border-t border-blue-100 pt-2 flex justify-between items-center">
                 <span className="text-gray-500 text-sm">已记录数据</span>
-                <span className={`font-bold text-lg ${dataRecords.length >= 3 ? 'text-green-600' : 'text-gray-600'}`}>{dataRecords.length} / 3</span>
+                <span className={`font-bold text-base ${dataRecords.length >= 3 ? 'text-green-600' : 'text-gray-600'}`}>{dataRecords.length} / 3</span>
               </div>
             </div>
           )}
@@ -618,7 +584,7 @@ function OhmExperiment1() {
             <button
               onClick={() => setShowConclusion(true)}
               disabled={!canComplete}
-              className={`w-full py-3 rounded-xl font-bold text-base transition-all ${
+              className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all ${
                 canComplete
                   ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg hover:shadow-xl'
                   : 'bg-gray-200 text-gray-400 cursor-not-allowed'
@@ -627,8 +593,8 @@ function OhmExperiment1() {
               完成实验
             </button>
             {!canComplete && (
-              <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                调节滑动变阻器，至少得到3组实验数据才能完成实验哦~
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                至少3组实验数据才能完成
               </div>
             )}
           </div>
@@ -649,7 +615,7 @@ function OhmExperiment1() {
 }
 
 // Experiment 2: Fixed Voltage, vary resistance
-function OhmExperiment2() {
+function OhmExperiment2({ onSwitchExperiment }: { onSwitchExperiment: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
   const timeRef = useRef(0);
@@ -902,19 +868,22 @@ function OhmExperiment2() {
       ctx.font = 'bold 15px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('A', ammeterX, ammeterY + 6);
-      // Label
+      // Label (above circle)
       ctx.fillStyle = '#4b5563';
       ctx.font = '11px sans-serif';
-      ctx.fillText('电流表', ammeterX, ammeterY + 38);
-      // Highlighted reading
+      ctx.fillText('电流表', ammeterX, ammeterY - 28);
+      // Reading (to the left of circle)
+      const e2AText = `${(st.current * 1000).toFixed(1)}mA`;
+      ctx.font = 'bold 13px monospace';
+      const e2ATW = ctx.measureText(e2AText).width;
       ctx.fillStyle = '#dcfce7';
-      ctx.fillRect(ammeterX - 35, ammeterY + 42, 70, 20);
+      ctx.fillRect(ammeterX - 22 - e2ATW - 8, ammeterY - 10, e2ATW + 14, 22);
       ctx.strokeStyle = '#16a34a';
       ctx.lineWidth = 1.5;
-      ctx.strokeRect(ammeterX - 35, ammeterY + 42, 70, 20);
+      ctx.strokeRect(ammeterX - 22 - e2ATW - 8, ammeterY - 10, e2ATW + 14, 22);
       ctx.fillStyle = '#15803d';
-      ctx.font = 'bold 13px monospace';
-      ctx.fillText(`${(st.current * 1000).toFixed(1)}mA`, ammeterX, ammeterY + 57);
+      ctx.textAlign = 'right';
+      ctx.fillText(e2AText, ammeterX - 26, ammeterY + 5);
 
       // === Left wire up from ammeter to top ===
       ctx.strokeStyle = wireColor;
@@ -1094,140 +1063,73 @@ function OhmExperiment2() {
   }, [voltageMatched, needAdjustVoltage, switchClosed, currentResistance, current, targetVoltage]);
 
   return (
-    <div className="space-y-5">
-      {/* Experiment title and tips */}
-      <div className="bg-blue-50 rounded-xl border border-blue-200 p-4">
-        <h3 className="font-bold text-blue-800 text-lg mb-2">实验二：电压大小固定</h3>
-        <p className="text-sm text-blue-700 mb-1">🎯 实验目标：电压恒定，改变电阻阻值，你能发现电流与电阻有什么关系吗？</p>
-        <p className="text-xs text-blue-600">💡 操作指引：闭合开关后，更换不同阻值的电阻，调节滑动变阻器使电压相同，至少得到3组实验数据后可完成实验</p>
+    <div className="h-full flex flex-col">
+      {/* Header with experiment switch */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="bg-amber-50 rounded-lg border border-amber-200 px-3 py-1.5">
+          <h3 className="font-bold text-amber-800 text-sm">实验二：电压大小固定</h3>
+        </div>
+        <button onClick={onSwitchExperiment} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-all">
+          切换到实验一 →
+        </button>
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_340px] gap-5">
-        {/* Left: Circuit canvas and controls */}
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-blue-100 p-3">
-            <canvas ref={canvasRef} width={700} height={400} className="w-full rounded-lg cursor-pointer" onClick={handleCanvasClick} />
-          </div>
-          <div className="bg-white rounded-xl border border-blue-100 p-4 space-y-4">
-            <div className="flex items-center gap-4 flex-wrap">
-              {/* Switch button */}
-              <button
-                onClick={handleToggleSwitch}
-                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all ${
-                  switchClosed
-                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                    : 'bg-blue-500 text-white hover:bg-blue-600 shadow-md'
-                }`}
-              >
-                {switchClosed ? '断开开关 S' : '闭合开关 S'}
-              </button>
-
-              {/* Change resistor button */}
-              <button
-                onClick={handleChangeResistor}
-                disabled={!switchClosed}
-                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all ${
-                  !switchClosed
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-red-500 text-white hover:bg-red-600 shadow-md'
-                }`}
-              >
-                更换电阻（当前 {currentResistance}Ω）
-              </button>
-            </div>
-
-            {/* Slider rheostat */}
-            <div>
-              <label className="text-xs text-gray-500 font-medium block mb-1">
-                调节滑动变阻器{needAdjustVoltage ? '（请使电压表示数与上次相同）' : ''}
-              </label>
-              <input
-                type="range" min={0} max={100} step={1}
-                value={sliderPosition}
-                onChange={(e) => handleSliderChange(Number(e.target.value))}
-                disabled={!switchClosed}
-                className={`w-full accent-indigo-500 ${!switchClosed ? 'opacity-50' : ''}`}
-              />
-              <div className="flex justify-between text-xs text-gray-400">
-                <span>阻值最大</span>
-                <span>阻值最小</span>
-              </div>
-            </div>
-
-            {/* Voltage match hint */}
-            {needAdjustVoltage && switchClosed && (
-              <div className={`p-3 rounded-lg text-sm font-medium ${
-                voltageMatched
-                  ? 'bg-green-50 text-green-700 border border-green-200'
-                  : 'bg-yellow-50 text-yellow-700 border border-yellow-200'
-              }`}>
-                {voltageMatched
-                  ? `✅ 电压已与上次相同（${targetVoltage?.toFixed(2)}V），数据已自动记录！`
-                  : `⚠️ 请继续调节滑动变阻器，使电压表示数 = ${targetVoltage?.toFixed(2)}V（当前：${voltageAcrossR.toFixed(2)}V）`
-                }
-              </div>
-            )}
-          </div>
+      <div className="flex-1 grid lg:grid-cols-[1fr_280px] gap-3 min-h-0">
+        {/* Left: Circuit canvas */}
+        <div className="bg-white rounded-xl border border-blue-100 p-2 flex flex-col">
+          <canvas ref={canvasRef} width={700} height={400} className="w-full flex-1 rounded-lg cursor-pointer" onClick={handleCanvasClick} />
         </div>
 
-        {/* Right: Data table and controls */}
-        <div className="space-y-4">
+        {/* Right: Data table + controls */}
+        <div className="space-y-2 flex flex-col">
+          {/* Voltage match hint */}
+          {needAdjustVoltage && switchClosed && (
+            <div className={`p-2 rounded-lg text-xs font-medium ${
+              voltageMatched
+                ? 'bg-green-50 text-green-700 border border-green-200'
+                : 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+            }`}>
+              {voltageMatched
+                ? `✅ 电压已相同（${targetVoltage?.toFixed(2)}V），数据已记录！`
+                : `⚠️ 请调节变阻器，使电压 = ${targetVoltage?.toFixed(2)}V（当前：${voltageAcrossR.toFixed(2)}V）`
+              }
+            </div>
+          )}
+
           {/* Data table */}
-          <div className="bg-white rounded-xl border border-blue-100 p-4">
-            <h4 className="font-bold text-gray-700 text-sm mb-3">📋 实验数据（U = {targetVoltage?.toFixed(2) || '—'}V）</h4>
-            <table className="w-full text-sm">
+          <div className="bg-white rounded-xl border border-blue-100 p-3 flex-1">
+            <h4 className="font-bold text-gray-700 text-xs mb-2">📋 实验数据（U = {targetVoltage?.toFixed(2) || '—'}V）</h4>
+            <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-blue-100">
-                  <th className="text-left py-2 text-gray-500 font-medium">序号</th>
-                  <th className="text-center py-2 text-red-600 font-medium">电阻 R(Ω)</th>
-                  <th className="text-center py-2 text-blue-600 font-medium">电流 I(mA)</th>
+                  <th className="text-left py-1 text-gray-500 font-medium">序号</th>
+                  <th className="text-center py-1 text-red-600 font-medium">R(Ω)</th>
+                  <th className="text-center py-1 text-blue-600 font-medium">I(mA)</th>
                 </tr>
               </thead>
               <tbody>
                 {dataRecords.map((rec, idx) => (
                   <tr key={idx} className="border-b border-gray-50">
-                    <td className="py-2 text-gray-400">{idx + 1}</td>
-                    <td className="py-2 text-center font-mono font-bold text-red-600">{rec.resistance}</td>
-                    <td className="py-2 text-center font-mono font-bold text-blue-600">{rec.current}</td>
+                    <td className="py-1 text-gray-400">{idx + 1}</td>
+                    <td className="py-1 text-center font-mono font-bold text-red-600">{rec.resistance}</td>
+                    <td className="py-1 text-center font-mono font-bold text-blue-600">{rec.current}</td>
                   </tr>
                 ))}
                 {dataRecords.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="py-4 text-center text-gray-300 text-xs">闭合开关后开始记录数据</td>
+                    <td colSpan={3} className="py-2 text-center text-gray-300 text-xs">闭合开关后开始记录</td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
 
-          {/* Current readings */}
-          {switchClosed && (
-            <div className="bg-blue-50 rounded-xl border border-blue-200 p-4 space-y-2">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500">电压表示数</span>
-                <span className="font-mono font-bold text-xl text-amber-600 bg-amber-50 px-3 py-1 rounded-lg border border-amber-200">{voltageAcrossR.toFixed(2)} V</span>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500">电流表示数</span>
-                <span className="font-mono font-bold text-xl text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200">{(current * 1000).toFixed(1)} mA</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">当前电阻</span>
-                <span className="font-mono font-bold text-red-600">{currentResistance} Ω</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">已记录数据</span>
-                <span className={`font-bold ${dataRecords.length >= 3 ? 'text-green-600' : 'text-gray-600'}`}>{dataRecords.length} / 3</span>
-              </div>
-            </div>
-          )}
-
           {/* Complete button */}
           <div className="relative group">
             <button
               onClick={() => setShowConclusion(true)}
               disabled={!canComplete}
-              className={`w-full py-3 rounded-xl font-bold text-base transition-all ${
+              className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all ${
                 canComplete
                   ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg hover:shadow-xl'
                   : 'bg-gray-200 text-gray-400 cursor-not-allowed'
@@ -1236,21 +1138,24 @@ function OhmExperiment2() {
               完成实验
             </button>
             {!canComplete && (
-              <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                调节滑动变阻器，至少得到3组实验数据才能完成实验哦~
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                至少3组数据才能完成实验
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Conclusion */}
+      {/* Conclusion Modal */}
       {showConclusion && (
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border-2 border-green-200 p-6 text-center">
-          <div className="text-3xl mb-2">🎉</div>
-          <h4 className="font-bold text-green-800 text-lg mb-2">实验结论</h4>
-          <p className="text-green-700 text-base">发现了吗？<strong>电压恒定时，电流与电阻成反比</strong></p>
-          <p className="text-sm text-green-600 mt-2">I = U / R，当 U 不变时，I 与 R 成反比关系</p>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowConclusion(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4 text-center" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <div className="text-4xl mb-3">🎉</div>
+            <h4 className="font-bold text-green-800 text-xl mb-3">实验结论</h4>
+            <p className="text-green-700 text-lg font-medium">发现了吗？<strong>电压恒定时，电流与电阻成反比</strong></p>
+            <p className="text-sm text-gray-500 mt-3">I = U / R，当 U 不变时，I 与 R 成反比关系</p>
+            <button onClick={() => setShowConclusion(false)} className="mt-5 px-6 py-2 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-all">知道了</button>
+          </div>
         </div>
       )}
     </div>
