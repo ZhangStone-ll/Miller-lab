@@ -281,10 +281,6 @@ export default function ArchimedesLab() {
       }
       // 单位标注
       ctx.fillStyle = '#64748b';
-      ctx.font = '9px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('(m³)', mCupX + mCupW + 25, mCupY + mCupH / 2);
-
       // 量杯中的水
       if (st.beakerWaterLevel > 0.005) {
         const bWaterH = Math.min(st.beakerWaterLevel * mCupH * 0.85, mCupH - 6);
@@ -316,9 +312,7 @@ export default function ArchimedesLab() {
         ctx.textAlign = 'left';
         const volReadX = mCupX + mCupW + 8;
         const volReadY = mCupY + mCupH / 2;
-        ctx.fillText(`${volM3.toExponential(2)}`, volReadX, volReadY);
-        ctx.font = '10px sans-serif';
-        ctx.fillText('m³', volReadX, volReadY + 16);
+        ctx.fillText(`${volM3.toExponential(2)} m³`, volReadX, volReadY);
       }
 
       // --- 溢出的水流 ---
