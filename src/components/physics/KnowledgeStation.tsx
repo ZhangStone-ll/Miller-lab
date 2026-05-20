@@ -601,43 +601,6 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
         c.strokeRect(-45 + ci * 18, -14, 15, 9);
       }
 
-      // F浮 arrow (buoyancy)
-      c.strokeStyle = '#22c55e';
-      c.lineWidth = 2.5;
-      c.beginPath();
-      c.moveTo(0, 40);
-      c.lineTo(0, 60);
-      c.stroke();
-      // arrowhead
-      c.fillStyle = '#22c55e';
-      c.beginPath();
-      c.moveTo(0, 55);
-      c.lineTo(-5, 62);
-      c.lineTo(5, 62);
-      c.closePath();
-      c.fill();
-      c.fillStyle = '#22c55e';
-      c.font = 'bold 11px sans-serif';
-      c.textAlign = 'center';
-      c.fillText('F浮', 0, 74);
-
-      // G arrow (gravity)
-      c.strokeStyle = '#ef4444';
-      c.lineWidth = 2.5;
-      c.beginPath();
-      c.moveTo(0, 5);
-      c.lineTo(0, -15);
-      c.stroke();
-      c.fillStyle = '#ef4444';
-      c.beginPath();
-      c.moveTo(0, -10);
-      c.lineTo(-5, -17);
-      c.lineTo(5, -17);
-      c.closePath();
-      c.fill();
-      c.font = 'bold 11px sans-serif';
-      c.fillText('G', 0, -22);
-
       c.restore();
 
       // === SUBMARINE ===
@@ -711,40 +674,6 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
       const tankLevel = 0.4 + Math.sin(T * 0.5) * 0.15;
       c.fillRect(-30, -4, 10, 8 * tankLevel);
       c.fillRect(20, -4, 10, 8 * tankLevel);
-
-      // F浮 and G arrows for submarine
-      c.strokeStyle = '#22c55e';
-      c.lineWidth = 2;
-      c.beginPath();
-      c.moveTo(0, 16);
-      c.lineTo(0, 32);
-      c.stroke();
-      c.fillStyle = '#22c55e';
-      c.beginPath();
-      c.moveTo(0, 27);
-      c.lineTo(-4, 33);
-      c.lineTo(4, 33);
-      c.closePath();
-      c.fill();
-      c.font = 'bold 10px sans-serif';
-      c.textAlign = 'center';
-      c.fillText('F浮', 0, 43);
-
-      c.strokeStyle = '#ef4444';
-      c.lineWidth = 2;
-      c.beginPath();
-      c.moveTo(0, -14);
-      c.lineTo(0, -26);
-      c.stroke();
-      c.fillStyle = '#ef4444';
-      c.beginPath();
-      c.moveTo(0, -22);
-      c.lineTo(-4, -28);
-      c.lineTo(4, -28);
-      c.closePath();
-      c.fill();
-      c.font = 'bold 10px sans-serif';
-      c.fillText('G', 0, -32);
 
       c.restore();
 
@@ -834,41 +763,6 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
       c.lineTo(6, 25);
       c.closePath();
       c.fill();
-
-      // F浮 arrow
-      c.strokeStyle = '#22c55e';
-      c.lineWidth = 2;
-      c.beginPath();
-      c.moveTo(0, -30);
-      c.lineTo(0, -46);
-      c.stroke();
-      c.fillStyle = '#22c55e';
-      c.beginPath();
-      c.moveTo(0, -42);
-      c.lineTo(-4, -48);
-      c.lineTo(4, -48);
-      c.closePath();
-      c.fill();
-      c.font = 'bold 10px sans-serif';
-      c.textAlign = 'center';
-      c.fillText('F浮', 0, -52);
-
-      // G arrow
-      c.strokeStyle = '#ef4444';
-      c.lineWidth = 2;
-      c.beginPath();
-      c.moveTo(0, 28);
-      c.lineTo(0, 42);
-      c.stroke();
-      c.fillStyle = '#ef4444';
-      c.beginPath();
-      c.moveTo(0, 38);
-      c.lineTo(-4, 44);
-      c.lineTo(4, 44);
-      c.closePath();
-      c.fill();
-      c.font = 'bold 10px sans-serif';
-      c.fillText('G', 0, 54);
 
       c.restore();
 
