@@ -98,9 +98,47 @@ export default function ArchimedesLab() {
       const st = stRef.current;
       st.time += 0.016;
 
-      // === UPDATE PHYSICS ===
-      const targetImmersion = st.objectPos === 'hanging' ? st.sliderPos : 0;
-      st.currentImmersion += (targetImmersion - st.currentImmersion) * 0.06;
+      // === LAYOUT CALCULATIONS (needed for both physics and drawing) ===
+      const cupX = 300; const cupY = 180;
+      const cupW = 160; const cupH = 200;
+      const spoutY = cupY + 50;
+      const spoutEndX = cupX + cupW + 40;
+      const mCupX = spoutEndX + 10; const mCupY = 260;
+      const mCupW = 90; const mCupH = 120;
+      const scaleCX = mCupX + mCupW / 2;
+      const scaleCY = mCupY + mCupH + 20;
+      const frameX = cupX + cupW / 2;
+      const frameTopY = 10;
+      const ironW = 40; const ironH = 60;
+      const waterSurfaceY = spoutY + 2;
+
+      // 铁块完全浸没时，铁块顶部在水面下3px
+      const ironTopFullySub = waterSurfaceY + 3;
+      // 初始位置：铁块底部在水面以上25px
+      const ironTopStart = waterSurfaceY - ironH - 25;
+      const sliderMinYCalc = ironTopStart - 30;
+      const sliderYMaxCalc = ironTopFullySub - 30;
+      const sliderY = sliderMinYCalc + (sliderYMaxCalc - sliderMinYCalc) * st.sliderPos;
+
+      // 重物Y
+      let ironY: number;
+      if (st.objectPos === 'hanging') {
+        ironY = sliderY + 30;
+      } else {
+        ironY = cupY + cupH - ironH - 10;
+      }
+
+      // 计算视觉浸入比例（基于铁块实际位置，确保与画面一致）
+      let visualImmersion = 0;
+      if (st.objectPos === 'hanging') {
+        const ironBottomY = ironY + ironH;
+        if (ironBottomY > waterSurfaceY) {
+          visualImmersion = Math.min(1, (ironBottomY - waterSurfaceY) / ironH);
+        }
+      }
+
+      // === UPDATE PHYSICS using visual immersion ===
+      st.currentImmersion += (visualImmersion - st.currentImmersion) * 0.06;
 
       const phys = getPhysics(st.currentImmersion);
       const targetOverflow = st.currentImmersion;
@@ -118,7 +156,7 @@ export default function ArchimedesLab() {
       st.waterDrops = st.waterDrops.filter(d => { d.vy += 0.3; d.y += d.vy; d.life--; return d.life > 0; });
 
       // Water stability detection
-      const isStableNow = st.objectPos === 'hanging' && st.sliderPos > 0 &&
+      const isStableNow = st.objectPos === 'hanging' && visualImmersion > 0.01 &&
         Math.abs(st.overflowProgress - targetOverflow) < 0.005;
       if (isStableNow && !st.waterStable) {
         st.stableTimer++;
@@ -147,46 +185,6 @@ export default function ArchimedesLab() {
       ctx.clearRect(0, 0, CW, CH);
       ctx.fillStyle = '#f0f9ff';
       ctx.fillRect(0, 0, CW, CH);
-
-      // --- 布局参数 (调低溢水杯，增大铁块到水面距离) ---
-      const cupX = 300; const cupY = 180;
-      const cupW = 160; const cupH = 200;
-      const spoutY = cupY + 50;
-      const spoutEndX = cupX + cupW + 40;
-
-      // 量杯 (replacing beaker - taller, with markings)
-      const mCupX = spoutEndX + 10; const mCupY = 260;
-      const mCupW = 90; const mCupH = 120;
-
-      // 电子秤 (bigger)
-      const scaleCX = mCupX + mCupW / 2;
-      const scaleCY = mCupY + mCupH + 20;
-
-      // 拉力计框架
-      const frameX = cupX + cupW / 2;
-      const frameTopY = 10;
-      const ironW = 40; const ironH = 60;
-
-      // 铁块完全浸没时，铁块顶部刚好在水面下
-      // 水面在 spoutY + 2
-      // 完全浸没时 ironTop = spoutY + 2 - a little, ironBottom = ironTop + ironH
-      // 此时 sliderY + 30(挂绳偏移) + ironH(铁块) 底部应到 spoutY + 2 + ironH - 几个px
-      const waterSurfaceY = spoutY + 2;
-      // 完全浸没时铁块顶部Y = waterSurfaceY - 5 (略低于水面)
-      const ironTopWhenSubmerged = waterSurfaceY - 5;
-      // sliderY + 30 = ironTopWhenSubmerged  =>  sliderY = ironTopWhenSubmerged - 30
-      const sliderYMax = ironTopWhenSubmerged - 30;
-      const sliderMinY = frameTopY + 30;
-      // 限定滑块范围：sliderMinY 到 sliderYMax
-      const sliderY = sliderMinY + (sliderYMax - sliderMinY) * st.sliderPos;
-
-      // 重物Y
-      let ironY: number;
-      if (st.objectPos === 'hanging') {
-        ironY = sliderY + 30;
-      } else {
-        ironY = cupY + cupH - ironH - 10;
-      }
 
       // --- 绘制溢水杯 ---
       ctx.strokeStyle = '#64748b';
@@ -380,7 +378,7 @@ export default function ArchimedesLab() {
       ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.moveTo(frameX, frameTopY);
-      ctx.lineTo(frameX, sliderYMax + 30);
+      ctx.lineTo(frameX, sliderYMaxCalc + 30);
       ctx.stroke();
 
       // 顶部横梁
@@ -521,7 +519,7 @@ export default function ArchimedesLab() {
         ctx.fillStyle = `rgba(59, 130, 246, ${alpha})`;
         ctx.font = '11px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('↕ 向下拖拽滑块使铁块浸入水中', frameX, sliderYMax + 50);
+        ctx.fillText('↕ 向下拖拽滑块使铁块浸入水中', frameX, sliderYMaxCalc + 50);
       }
 
       // --- 步骤提示 ---
@@ -609,10 +607,11 @@ export default function ArchimedesLab() {
     const cupY = 180; const spoutY = cupY + 50;
     const ironH = 60; const ironW = 40;
     const waterSurfaceY = spoutY + 2;
-    const ironTopWhenSubmerged = waterSurfaceY - 5;
-    const sliderYMax = ironTopWhenSubmerged - 30;
-    const sliderMinY = 10 + 30;
-    const sliderY = sliderMinY + (sliderYMax - sliderMinY) * st.sliderPos;
+    const ironTopFullySub = waterSurfaceY + 3;
+    const ironTopStart = waterSurfaceY - ironH - 25;
+    const sliderMinYCalc = ironTopStart - 30;
+    const sliderYMaxCalc = ironTopFullySub - 30;
+    const sliderY = sliderMinYCalc + (sliderYMaxCalc - sliderMinYCalc) * st.sliderPos;
 
     // Click on iron block (on table)
     if (st.objectPos === 'table') {
@@ -639,13 +638,15 @@ export default function ArchimedesLab() {
     const st = stRef.current;
 
     if (st.dragging === 'slider') {
-      const cupY = 180; const spoutY = cupY + 50;
+      const spoutY = 180 + 50;
       const waterSurfaceY = spoutY + 2;
-      const ironTopWhenSubmerged = waterSurfaceY - 5;
-      const sliderYMax = ironTopWhenSubmerged - 30;
-      const sliderMinY = 10 + 30;
+      const ironH = 60;
+      const ironTopFullySub = waterSurfaceY + 3;
+      const ironTopStart = waterSurfaceY - ironH - 25;
+      const sliderMinYCalc = ironTopStart - 30;
+      const sliderYMaxCalc = ironTopFullySub - 30;
       // 限定范围：0 (最高) 到 1 (铁块完全浸没)
-      const newSlider = Math.max(0, Math.min(1, (y - sliderMinY) / (sliderYMax - sliderMinY)));
+      const newSlider = Math.max(0, Math.min(1, (y - sliderMinYCalc) / (sliderYMaxCalc - sliderMinYCalc)));
       st.sliderPos = newSlider;
       setSliderValue(newSlider);
     }
@@ -732,7 +733,7 @@ export default function ArchimedesLab() {
             className="flex-1 accent-blue-500"
             disabled={objectPos !== 'hanging'}
           />
-          <span className="text-xs text-gray-500 w-16">
+          <span className="text-xs text-gray-500 w-20">
             {objectPos === 'hanging' ? `浸入${Math.round(currentImmersion * 100)}%` : '--'}
           </span>
         </div>
