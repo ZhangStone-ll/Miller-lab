@@ -405,91 +405,535 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
     };
 
     const drawApplication = (c: CanvasRenderingContext2D, cw: number, ch: number, t: number) => {
-      c.fillStyle = '#f0f9ff';
-      c.fillRect(0, 0, cw, ch);
+      const T = t * 0.02; // slow time
+      const waterLine = ch * 0.48;
 
-      c.fillStyle = 'rgba(59, 130, 246, 0.15)';
-      c.fillRect(0, ch * 0.4, cw, ch * 0.6);
+      // === SKY ===
+      const skyGrad = c.createLinearGradient(0, 0, 0, waterLine);
+      skyGrad.addColorStop(0, '#1a6fc4');
+      skyGrad.addColorStop(0.3, '#3a8fd8');
+      skyGrad.addColorStop(0.6, '#6cb4e8');
+      skyGrad.addColorStop(1, '#b8ddf5');
+      c.fillStyle = skyGrad;
+      c.fillRect(0, 0, cw, waterLine);
 
-      c.strokeStyle = 'rgba(59, 130, 246, 0.3)';
-      c.lineWidth = 1;
-      for (let i = 0; i < 4; i++) {
-        const wy = ch * 0.4 + i * 15;
+      // Sun glow
+      const sunX = cw * 0.85;
+      const sunY = ch * 0.12;
+      const sunGlow = c.createRadialGradient(sunX, sunY, 5, sunX, sunY, 60);
+      sunGlow.addColorStop(0, 'rgba(255,250,200,0.9)');
+      sunGlow.addColorStop(0.3, 'rgba(255,230,150,0.4)');
+      sunGlow.addColorStop(1, 'rgba(255,200,100,0)');
+      c.fillStyle = sunGlow;
+      c.beginPath();
+      c.arc(sunX, sunY, 60, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = '#fff8dc';
+      c.beginPath();
+      c.arc(sunX, sunY, 12, 0, Math.PI * 2);
+      c.fill();
+
+      // Clouds
+      const drawCloud = (cx: number, cy: number, scale: number) => {
+        c.save();
+        c.translate(cx, cy);
+        c.scale(scale, scale);
+        c.fillStyle = 'rgba(255,255,255,0.85)';
         c.beginPath();
-        c.moveTo(0, wy + Math.sin(t * 0.05 + i) * 5);
-        for (let x = 0; x < cw; x += 20) {
-          c.lineTo(x, wy + Math.sin(t * 0.05 + i + x * 0.01) * 5);
+        c.arc(0, 0, 20, 0, Math.PI * 2);
+        c.arc(18, -5, 16, 0, Math.PI * 2);
+        c.arc(-18, -3, 14, 0, Math.PI * 2);
+        c.arc(8, -12, 14, 0, Math.PI * 2);
+        c.arc(-8, -10, 12, 0, Math.PI * 2);
+        c.arc(25, 2, 10, 0, Math.PI * 2);
+        c.arc(-25, 2, 10, 0, Math.PI * 2);
+        c.fill();
+        c.restore();
+      };
+      drawCloud((cw * 0.15 + T * 8) % (cw + 100) - 50, ch * 0.08, 1.2);
+      drawCloud((cw * 0.55 + T * 5) % (cw + 100) - 50, ch * 0.14, 1.0);
+      drawCloud((cw * 0.8 + T * 6) % (cw + 100) - 50, ch * 0.06, 0.8);
+
+      // === OCEAN ===
+      const oceanGrad = c.createLinearGradient(0, waterLine, 0, ch);
+      oceanGrad.addColorStop(0, '#1a7ab5');
+      oceanGrad.addColorStop(0.15, '#156a9e');
+      oceanGrad.addColorStop(0.5, '#0d4a7a');
+      oceanGrad.addColorStop(1, '#082d52');
+      c.fillStyle = oceanGrad;
+      c.fillRect(0, waterLine, cw, ch - waterLine);
+
+      // Ocean waves - multiple layers for realism
+      const drawWaveLayer = (yBase: number, amplitude: number, freq: number, speed: number, color: string, alpha: number) => {
+        c.save();
+        c.globalAlpha = alpha;
+        c.fillStyle = color;
+        c.beginPath();
+        c.moveTo(0, ch);
+        for (let x = 0; x <= cw; x += 3) {
+          const y = yBase + Math.sin(x * freq + T * speed) * amplitude
+            + Math.sin(x * freq * 1.7 + T * speed * 0.7) * amplitude * 0.4;
+          c.lineTo(x, y);
         }
-        c.stroke();
-      }
-
-      if (t > 10) {
-        const shipAlpha = Math.min(1, (t - 10) / 20);
-        c.globalAlpha = shipAlpha;
-        const shipX = cw * 0.3;
-        const shipY = ch * 0.38 + Math.sin(t * 0.04) * 2;
-
-        c.fillStyle = '#dc2626';
-        c.beginPath();
-        c.moveTo(shipX - 40, shipY);
-        c.quadraticCurveTo(shipX - 45, shipY + 20, shipX - 30, shipY + 25);
-        c.lineTo(shipX + 30, shipY + 25);
-        c.quadraticCurveTo(shipX + 45, shipY + 20, shipX + 40, shipY);
+        c.lineTo(cw, ch);
         c.closePath();
         c.fill();
+        c.restore();
+      };
+      drawWaveLayer(waterLine, 4, 0.025, 2.5, '#4db8e8', 0.4);
+      drawWaveLayer(waterLine + 3, 3, 0.03, 2.0, '#2d9fd4', 0.3);
+      drawWaveLayer(waterLine + 6, 2, 0.02, 1.5, '#1a8bc4', 0.2);
 
-        c.fillStyle = '#f5f5f4';
-        c.fillRect(shipX - 15, shipY - 20, 30, 20);
-        c.fillStyle = '#93c5fd';
-        c.fillRect(shipX - 10, shipY - 16, 8, 8);
-        c.fillRect(shipX + 2, shipY - 16, 8, 8);
-        c.fillStyle = '#ef4444';
-        c.fillRect(shipX - 4, shipY - 30, 8, 12);
+      // Foam line at water surface
+      c.save();
+      c.globalAlpha = 0.5;
+      c.strokeStyle = '#ffffff';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      for (let x = 0; x <= cw; x += 2) {
+        const y = waterLine + Math.sin(x * 0.025 + T * 2.5) * 3;
+        if (x === 0) c.moveTo(x, y); else c.lineTo(x, y);
+      }
+      c.stroke();
+      c.restore();
 
-        c.strokeStyle = 'rgba(34, 197, 94, 0.7)';
+      // Underwater light rays
+      c.save();
+      for (let i = 0; i < 5; i++) {
+        const rx = cw * (0.1 + i * 0.2) + Math.sin(T + i) * 10;
+        c.globalAlpha = 0.04 + Math.sin(T * 0.5 + i) * 0.02;
+        c.fillStyle = '#7ec8e3';
+        c.beginPath();
+        c.moveTo(rx - 5, waterLine);
+        c.lineTo(rx - 30 - i * 5, ch);
+        c.lineTo(rx + 30 + i * 5, ch);
+        c.lineTo(rx + 5, waterLine);
+        c.closePath();
+        c.fill();
+      }
+      c.restore();
+
+      // === SHIP ===
+      const shipBob = Math.sin(T * 1.8) * 3;
+      const shipTilt = Math.sin(T * 1.2) * 0.015;
+      const shipX = cw * 0.3;
+      const shipY = waterLine - 8 + shipBob;
+
+      c.save();
+      c.translate(shipX, shipY);
+      c.rotate(shipTilt);
+
+      // Hull below waterline
+      c.fillStyle = '#8b1a1a';
+      c.beginPath();
+      c.moveTo(-55, 0);
+      c.lineTo(-60, 18);
+      c.quadraticCurveTo(-50, 35, 0, 38);
+      c.quadraticCurveTo(50, 35, 60, 18);
+      c.lineTo(55, 0);
+      c.closePath();
+      c.fill();
+
+      // Red anti-fouling paint stripe
+      c.fillStyle = '#b91c1c';
+      c.beginPath();
+      c.moveTo(-55, 0);
+      c.lineTo(-58, 10);
+      c.quadraticCurveTo(0, 14, 58, 10);
+      c.lineTo(55, 0);
+      c.closePath();
+      c.fill();
+
+      // Deck
+      c.fillStyle = '#d4a574';
+      c.fillRect(-52, -5, 104, 7);
+
+      // Superstructure - bridge
+      c.fillStyle = '#f5f0e8';
+      c.fillRect(-20, -35, 40, 30);
+      // Bridge windows
+      c.fillStyle = '#60a5fa';
+      for (let wi = 0; wi < 4; wi++) {
+        c.fillRect(-16 + wi * 10, -28, 6, 6);
+      }
+      // Bridge roof
+      c.fillStyle = '#e5ddd0';
+      c.fillRect(-22, -38, 44, 5);
+
+      // Funnel / smokestack
+      c.fillStyle = '#ef4444';
+      c.beginPath();
+      c.moveTo(25, -38);
+      c.lineTo(23, -55);
+      c.lineTo(33, -55);
+      c.lineTo(31, -38);
+      c.closePath();
+      c.fill();
+      // Black band on funnel
+      c.fillStyle = '#1a1a1a';
+      c.fillRect(23, -48, 10, 5);
+
+      // Smoke
+      c.save();
+      for (let si = 0; si < 4; si++) {
+        const smokeX = 28 + Math.sin(T * 1.5 + si) * 6 + si * 8;
+        const smokeY = -55 - si * 10 - Math.sin(T + si) * 3;
+        const smokeR = 5 + si * 3;
+        c.globalAlpha = 0.15 - si * 0.03;
+        c.fillStyle = '#d1d5db';
+        c.beginPath();
+        c.arc(smokeX, smokeY, smokeR, 0, Math.PI * 2);
+        c.fill();
+      }
+      c.restore();
+
+      // Mast
+      c.fillStyle = '#6b7280';
+      c.fillRect(-2, -70, 3, 35);
+
+      // Cargo containers on deck
+      const containerColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
+      for (let ci = 0; ci < 4; ci++) {
+        c.fillStyle = containerColors[ci];
+        c.fillRect(-45 + ci * 18, -14, 15, 9);
+        c.strokeStyle = 'rgba(0,0,0,0.15)';
+        c.lineWidth = 0.5;
+        c.strokeRect(-45 + ci * 18, -14, 15, 9);
+      }
+
+      // F浮 arrow (buoyancy)
+      c.strokeStyle = '#22c55e';
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.moveTo(0, 40);
+      c.lineTo(0, 60);
+      c.stroke();
+      // arrowhead
+      c.fillStyle = '#22c55e';
+      c.beginPath();
+      c.moveTo(0, 55);
+      c.lineTo(-5, 62);
+      c.lineTo(5, 62);
+      c.closePath();
+      c.fill();
+      c.fillStyle = '#22c55e';
+      c.font = 'bold 11px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('F浮', 0, 74);
+
+      // G arrow (gravity)
+      c.strokeStyle = '#ef4444';
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.moveTo(0, 5);
+      c.lineTo(0, -15);
+      c.stroke();
+      c.fillStyle = '#ef4444';
+      c.beginPath();
+      c.moveTo(0, -10);
+      c.lineTo(-5, -17);
+      c.lineTo(5, -17);
+      c.closePath();
+      c.fill();
+      c.font = 'bold 11px sans-serif';
+      c.fillText('G', 0, -22);
+
+      c.restore();
+
+      // === SUBMARINE ===
+      const subBob = Math.sin(T * 1.2 + 1) * 4;
+      const subX = cw * 0.68 + Math.sin(T * 0.8) * 8;
+      const subY = waterLine + ch * 0.25 + subBob;
+
+      c.save();
+      c.translate(subX, subY);
+
+      // Submarine body shadow
+      c.fillStyle = 'rgba(0,0,0,0.15)';
+      c.beginPath();
+      c.ellipse(2, 3, 48, 14, 0, 0, Math.PI * 2);
+      c.fill();
+
+      // Main hull
+      const subGrad = c.createLinearGradient(0, -15, 0, 15);
+      subGrad.addColorStop(0, '#6b7280');
+      subGrad.addColorStop(0.3, '#9ca3af');
+      subGrad.addColorStop(0.7, '#6b7280');
+      subGrad.addColorStop(1, '#4b5563');
+      c.fillStyle = subGrad;
+      c.beginPath();
+      c.ellipse(0, 0, 48, 14, 0, 0, Math.PI * 2);
+      c.fill();
+
+      // Conning tower / sail
+      const sailGrad = c.createLinearGradient(-8, -28, 8, -14);
+      sailGrad.addColorStop(0, '#9ca3af');
+      sailGrad.addColorStop(1, '#6b7280');
+      c.fillStyle = sailGrad;
+      c.beginPath();
+      c.moveTo(-8, -14);
+      c.lineTo(-6, -28);
+      c.quadraticCurveTo(0, -32, 6, -28);
+      c.lineTo(8, -14);
+      c.closePath();
+      c.fill();
+
+      // Periscope
+      c.fillStyle = '#4b5563';
+      c.fillRect(-1.5, -38, 3, 12);
+      c.fillRect(-1.5, -40, 10, 3);
+
+      // Propeller
+      c.save();
+      c.translate(-48, 0);
+      c.rotate(T * 6);
+      c.fillStyle = '#9ca3af';
+      for (let pi = 0; pi < 3; pi++) {
+        c.save();
+        c.rotate(pi * Math.PI * 2 / 3);
+        c.beginPath();
+        c.ellipse(0, -7, 2.5, 7, 0, 0, Math.PI * 2);
+        c.fill();
+        c.restore();
+      }
+      c.restore();
+
+      // Viewport windows
+      c.fillStyle = '#93c5fd';
+      for (let vi = 0; vi < 3; vi++) {
+        c.beginPath();
+        c.arc(-20 + vi * 14, 2, 3, 0, Math.PI * 2);
+        c.fill();
+      }
+
+      // Ballast tanks indicator
+      c.fillStyle = 'rgba(59,130,246,0.4)';
+      const tankLevel = 0.4 + Math.sin(T * 0.5) * 0.15;
+      c.fillRect(-30, -4, 10, 8 * tankLevel);
+      c.fillRect(20, -4, 10, 8 * tankLevel);
+
+      // F浮 and G arrows for submarine
+      c.strokeStyle = '#22c55e';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(0, 16);
+      c.lineTo(0, 32);
+      c.stroke();
+      c.fillStyle = '#22c55e';
+      c.beginPath();
+      c.moveTo(0, 27);
+      c.lineTo(-4, 33);
+      c.lineTo(4, 33);
+      c.closePath();
+      c.fill();
+      c.font = 'bold 10px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('F浮', 0, 43);
+
+      c.strokeStyle = '#ef4444';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(0, -14);
+      c.lineTo(0, -26);
+      c.stroke();
+      c.fillStyle = '#ef4444';
+      c.beginPath();
+      c.moveTo(0, -22);
+      c.lineTo(-4, -28);
+      c.lineTo(4, -28);
+      c.closePath();
+      c.fill();
+      c.font = 'bold 10px sans-serif';
+      c.fillText('G', 0, -32);
+
+      c.restore();
+
+      // Underwater bubbles from submarine
+      c.save();
+      for (let bi = 0; bi < 6; bi++) {
+        const bx = subX - 30 + Math.sin(T * 2 + bi * 1.5) * 10;
+        const by = subY - 20 - ((T * 30 + bi * 25) % 80);
+        const br = 2 + Math.sin(T + bi) * 1;
+        c.globalAlpha = Math.max(0, 0.3 - by * 0.001);
+        c.fillStyle = 'rgba(147,197,253,0.5)';
+        c.beginPath();
+        c.arc(bx, by, br, 0, Math.PI * 2);
+        c.fill();
+      }
+      c.restore();
+
+      // === HYDROGEN BALLOON ===
+      const balloonBob = Math.sin(T * 1.0) * 5;
+      const balloonX = cw * 0.78 + Math.sin(T * 0.6) * 15;
+      const balloonY = ch * 0.18 + balloonBob;
+
+      c.save();
+      c.translate(balloonX, balloonY);
+
+      // Rope
+      c.strokeStyle = '#92400e';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(0, 25);
+      const ropeLen = 45;
+      for (let ri = 0; ri < ropeLen; ri += 3) {
+        c.lineTo(Math.sin(ri * 0.15 + T) * 2, 25 + ri);
+      }
+      c.stroke();
+
+      // Basket
+      c.fillStyle = '#92400e';
+      c.fillRect(-8, 25 + ropeLen - 2, 16, 10);
+      c.strokeStyle = '#78350f';
+      c.lineWidth = 0.8;
+      c.strokeRect(-8, 25 + ropeLen - 2, 16, 10);
+      // Basket weave lines
+      c.strokeStyle = '#a16207';
+      for (let wi = 0; wi < 3; wi++) {
+        c.beginPath();
+        c.moveTo(-7, 25 + ropeLen + wi * 3);
+        c.lineTo(7, 25 + ropeLen + wi * 3);
+        c.stroke();
+      }
+
+      // Balloon envelope
+      const balloonGrad = c.createRadialGradient(-3, -5, 3, 0, 0, 25);
+      balloonGrad.addColorStop(0, '#fde68a');
+      balloonGrad.addColorStop(0.3, '#fbbf24');
+      balloonGrad.addColorStop(0.7, '#f59e0b');
+      balloonGrad.addColorStop(1, '#d97706');
+      c.fillStyle = balloonGrad;
+      c.beginPath();
+      c.ellipse(0, 0, 22, 28, 0, 0, Math.PI * 2);
+      c.fill();
+
+      // Balloon stripes
+      c.save();
+      c.clip();
+      c.strokeStyle = 'rgba(180,83,9,0.25)';
+      c.lineWidth = 1.5;
+      for (let si = -2; si <= 2; si++) {
+        c.beginPath();
+        c.ellipse(si * 7, 0, 22, 28, 0, 0, Math.PI * 2);
+        c.stroke();
+      }
+      c.restore();
+
+      // Balloon highlight
+      c.fillStyle = 'rgba(255,255,255,0.25)';
+      c.beginPath();
+      c.ellipse(-7, -10, 8, 12, -0.3, 0, Math.PI * 2);
+      c.fill();
+
+      // Balloon opening at bottom
+      c.fillStyle = '#b45309';
+      c.beginPath();
+      c.moveTo(-6, 25);
+      c.lineTo(-8, 28);
+      c.lineTo(8, 28);
+      c.lineTo(6, 25);
+      c.closePath();
+      c.fill();
+
+      // F浮 arrow
+      c.strokeStyle = '#22c55e';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(0, -30);
+      c.lineTo(0, -46);
+      c.stroke();
+      c.fillStyle = '#22c55e';
+      c.beginPath();
+      c.moveTo(0, -42);
+      c.lineTo(-4, -48);
+      c.lineTo(4, -48);
+      c.closePath();
+      c.fill();
+      c.font = 'bold 10px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('F浮', 0, -52);
+
+      // G arrow
+      c.strokeStyle = '#ef4444';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(0, 28);
+      c.lineTo(0, 42);
+      c.stroke();
+      c.fillStyle = '#ef4444';
+      c.beginPath();
+      c.moveTo(0, 38);
+      c.lineTo(-4, 44);
+      c.lineTo(4, 44);
+      c.closePath();
+      c.fill();
+      c.font = 'bold 10px sans-serif';
+      c.fillText('G', 0, 54);
+
+      c.restore();
+
+      // === SEABED ===
+      c.fillStyle = '#0a2540';
+      c.beginPath();
+      c.moveTo(0, ch);
+      for (let sx = 0; sx <= cw; sx += 5) {
+        c.lineTo(sx, ch - 15 + Math.sin(sx * 0.03) * 5 + Math.sin(sx * 0.07) * 3);
+      }
+      c.lineTo(cw, ch);
+      c.closePath();
+      c.fill();
+      // Sand texture
+      c.fillStyle = '#1a3a5c';
+      c.beginPath();
+      c.moveTo(0, ch);
+      for (let sx = 0; sx <= cw; sx += 5) {
+        c.lineTo(sx, ch - 8 + Math.sin(sx * 0.04 + 1) * 3);
+      }
+      c.lineTo(cw, ch);
+      c.closePath();
+      c.fill();
+
+      // Seaweed
+      const drawSeaweed = (sx: number, height: number) => {
+        c.strokeStyle = '#166534';
         c.lineWidth = 2;
         c.beginPath();
-        c.moveTo(shipX, shipY + 30);
-        c.lineTo(shipX, shipY + 50);
+        c.moveTo(sx, ch - 10);
+        for (let si = 0; si < height; si += 3) {
+          c.lineTo(sx + Math.sin(si * 0.1 + T * 2) * 6, ch - 10 - si);
+        }
         c.stroke();
-        c.fillStyle = 'rgba(34, 197, 94, 0.7)';
-        c.font = '11px sans-serif';
-        c.textAlign = 'center';
-        c.fillText('F浮↑', shipX, shipY + 62);
-        c.globalAlpha = 1;
-      }
+      };
+      drawSeaweed(cw * 0.1, 30);
+      drawSeaweed(cw * 0.15, 25);
+      drawSeaweed(cw * 0.9, 35);
+      drawSeaweed(cw * 0.95, 28);
 
-      if (t > 40) {
-        const subAlpha = Math.min(1, (t - 40) / 20);
-        c.globalAlpha = subAlpha;
-        const subY = ch * 0.6 + Math.sin(t * 0.04) * 3;
-        const subX = cw * 0.65 + Math.sin(t * 0.03) * 5;
-
-        c.fillStyle = '#64748b';
+      // Fish
+      const drawFish = (fx: number, fy: number, size: number, color: string) => {
+        c.fillStyle = color;
         c.beginPath();
-        c.ellipse(subX, subY, 30, 12, 0, 0, Math.PI * 2);
+        c.ellipse(fx, fy, size, size * 0.5, 0, 0, Math.PI * 2);
         c.fill();
-        c.fillStyle = '#475569';
-        c.fillRect(subX - 5, subY - 18, 10, 8);
-
-        c.fillStyle = 'rgba(59, 130, 246, 0.5)';
-        const tankFill = Math.min(1, (t - 40) / 60);
-        c.fillRect(subX - 20, subY - 4, 12, 8 * tankFill);
-        c.fillRect(subX + 8, subY - 4, 12, 8 * tankFill);
-
-        c.globalAlpha = 1;
-      }
-
-      if (t > 20) {
-        c.fillStyle = 'white';
-        c.font = '12px sans-serif';
-        c.textAlign = 'center';
-        c.fillText('🚢 轮船 - 空心增大V排', cw * 0.3, ch * 0.35);
-      }
-      if (t > 50) {
-        c.fillStyle = 'rgba(255,255,255,0.9)';
-        c.fillText('🤖 潜水艇 - 改变自重', cw * 0.65, ch * 0.52);
-      }
+        // Tail
+        c.beginPath();
+        c.moveTo(fx - size, fy);
+        c.lineTo(fx - size * 1.5, fy - size * 0.4);
+        c.lineTo(fx - size * 1.5, fy + size * 0.4);
+        c.closePath();
+        c.fill();
+        // Eye
+        c.fillStyle = '#fff';
+        c.beginPath();
+        c.arc(fx + size * 0.4, fy - size * 0.1, size * 0.15, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = '#000';
+        c.beginPath();
+        c.arc(fx + size * 0.45, fy - size * 0.1, size * 0.08, 0, Math.PI * 2);
+        c.fill();
+      };
+      drawFish((cw * 0.5 + T * 20) % cw, waterLine + ch * 0.15, 8, '#fbbf24');
+      drawFish((cw * 0.8 - T * 15 + cw) % cw, waterLine + ch * 0.1, 6, '#fb923c');
     };
 
     const draw = () => {
