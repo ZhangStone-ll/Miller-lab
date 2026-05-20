@@ -16,47 +16,35 @@ const IRON_WEIGHT = IRON_DENSITY * IRON_VOLUME * G_ACCEL; // ≈7.72 N
 
 // Canvas layout constants
 const CW = 900;
-const CH = 520;
+const CH = 560;
 
 interface DataRow {
-  G: number;
-  F: number;
-  buoyancy: number;
-  displacedWeight: number;
-  showResult: boolean; // 是否已显示3/4列
+  G: number;              // 物体重力
+  F: number;              // 拉力计示数
+  buoyancyGF: number;     // 浮力 = G - F
+  displacedWeight: number; // 排出水重力
+  displacedVol: number;   // 排出水体积 (m³)
+  rhoGV: number;          // ρ液gV排 计算的浮力
+  rhoLiquid: number;      // 液体密度
+  showResult: boolean;
   animPhase: number; // 0=waiting, 1=zooming, 2=done
 }
 
 interface LabInternalState {
-  // 重物位置: 'table'=桌上, 'hanging'=挂在拉力计
   objectPos: 'table' | 'hanging';
-  // 拉力计滑块位置 0=最高, 1=最低(完全浸没)
   sliderPos: number;
-  // 动画中的实际浸入深度 (0~1)
   currentImmersion: number;
-  // 溢出水量进度 (0~1)
   overflowProgress: number;
-  // 水流粒子
   waterDrops: Array<{ x: number; y: number; vy: number; life: number }>;
-  // 电子秤当前读数
   scaleReading: number;
-  // 拉力计当前读数
   dynamometerReading: number;
-  // 水是否已稳定
   waterStable: boolean;
-  // 稳定计时
   stableTimer: number;
-  // 当前实验数据行
   dataRows: DataRow[];
-  // 实验结论是否显示
   showConclusion: boolean;
-  // 结论动画计时
   conclusionTimer: number;
-  // 时间
   time: number;
-  // 拖拽状态
   dragging: 'none' | 'object' | 'slider';
-  // 烧杯中水量 (0~1)
   beakerWaterLevel: number;
 }
 
@@ -91,12 +79,11 @@ export default function ArchimedesLab() {
   const [currentImmersion, setCurrentImmersion] = useState(0);
   const [animHighlight, setAnimHighlight] = useState<number | null>(null);
 
-  // 计算浮力相关物理量
   const getPhysics = useCallback((immersion: number) => {
-    const displacedVol = IRON_VOLUME * immersion; // m³
-    const buoyancy = WATER_DENSITY * displacedVol * G_ACCEL; // N
-    const dynamometer = IRON_WEIGHT - buoyancy; // N
-    const displacedWeight = buoyancy; // 排开水重力 = 浮力
+    const displacedVol = IRON_VOLUME * immersion;
+    const buoyancy = WATER_DENSITY * displacedVol * G_ACCEL;
+    const dynamometer = IRON_WEIGHT - buoyancy;
+    const displacedWeight = buoyancy;
     return { buoyancy, dynamometer, displacedWeight, displacedVol };
   }, []);
 
@@ -113,50 +100,31 @@ export default function ArchimedesLab() {
 
       // === UPDATE PHYSICS ===
       const targetImmersion = st.objectPos === 'hanging' ? st.sliderPos : 0;
-      // 平滑过渡浸入深度
       st.currentImmersion += (targetImmersion - st.currentImmersion) * 0.06;
 
       const phys = getPhysics(st.currentImmersion);
-
-      // 目标溢出量
-      const targetOverflow = st.currentImmersion; // 0~1
-
-      // 溢出水渐变
+      const targetOverflow = st.currentImmersion;
       st.overflowProgress += (targetOverflow - st.overflowProgress) * 0.04;
-
-      // 烧杯水量
       st.beakerWaterLevel += (st.overflowProgress * 0.8 - st.beakerWaterLevel) * 0.03;
-
-      // 拉力计读数
       st.dynamometerReading = st.objectPos === 'hanging' ? phys.dynamometer : 0;
-
-      // 电子秤读数 = 排开水重力
       st.scaleReading = WATER_DENSITY * IRON_VOLUME * st.overflowProgress * G_ACCEL;
 
-      // 水流粒子 - 当有溢出且还在流动时
+      // Water drops
       if (st.overflowProgress > 0.01 && Math.abs(st.overflowProgress - targetOverflow) > 0.005) {
         if (Math.random() < 0.3) {
-          st.waterDrops.push({
-            x: 0, y: 0, vy: 0, life: 60,
-          });
+          st.waterDrops.push({ x: 0, y: 0, vy: 0, life: 60 });
         }
       }
-      st.waterDrops = st.waterDrops.filter(d => {
-        d.vy += 0.3;
-        d.y += d.vy;
-        d.life--;
-        return d.life > 0;
-      });
+      st.waterDrops = st.waterDrops.filter(d => { d.vy += 0.3; d.y += d.vy; d.life--; return d.life > 0; });
 
-      // 水稳定检测
+      // Water stability detection
       const isStableNow = st.objectPos === 'hanging' && st.sliderPos > 0 &&
         Math.abs(st.overflowProgress - targetOverflow) < 0.005;
       if (isStableNow && !st.waterStable) {
         st.stableTimer++;
-        if (st.stableTimer > 30) { // 0.5秒
+        if (st.stableTimer > 30) {
           st.waterStable = true;
           setWaterStable(true);
-          // 触发数据显示动画
           triggerDataAnimation();
         }
       } else if (!isStableNow) {
@@ -165,81 +133,75 @@ export default function ArchimedesLab() {
         setWaterStable(false);
       }
 
-      // 数据行动画更新
       for (const row of st.dataRows) {
         if (row.showResult && row.animPhase === 1) {
           row.animPhase = 2;
         }
       }
 
-      // 同步到React状态
       setDynamometerReading(st.dynamometerReading);
       setScaleReading(st.scaleReading);
       setCurrentImmersion(st.currentImmersion);
 
       // === DRAW ===
       ctx.clearRect(0, 0, CW, CH);
-
-      // Background
       ctx.fillStyle = '#f0f9ff';
       ctx.fillRect(0, 0, CW, CH);
 
-      // --- 布局参数 ---
-      // 溢水杯
-      const cupX = 300; const cupY = 100;
-      const cupW = 160; const cupH = 260;
-      const spoutY = cupY + 60; // 溢水口Y
+      // --- 布局参数 (调低溢水杯，增大铁块到水面距离) ---
+      const cupX = 300; const cupY = 180;
+      const cupW = 160; const cupH = 200;
+      const spoutY = cupY + 50;
       const spoutEndX = cupX + cupW + 40;
 
-      // 烧杯
-      const beakerX = spoutEndX + 10; const beakerY = 280;
-      const beakerW = 80; const beakerH = 80;
+      // 量杯 (replacing beaker - taller, with markings)
+      const mCupX = spoutEndX + 10; const mCupY = 260;
+      const mCupW = 90; const mCupH = 120;
 
-      // 电子秤
-      const scaleCX = beakerX + beakerW / 2;
-      const scaleCY = beakerY + beakerH + 15;
+      // 电子秤 (bigger)
+      const scaleCX = mCupX + mCupW / 2;
+      const scaleCY = mCupY + mCupH + 20;
 
       // 拉力计框架
-      const frameX = cupX + cupW / 2; // 拉力计中心X
-      const frameTopY = 20;
-      const frameBottomY = cupY - 5;
-
-      // 滑块Y位置
-      const sliderMinY = frameTopY + 30;
-      const sliderMaxY = cupY + cupH - 30; // 可以让重物完全浸没
-      const sliderY = sliderMinY + (sliderMaxY - sliderMinY) * st.sliderPos;
-
-      // 重物位置
+      const frameX = cupX + cupW / 2;
+      const frameTopY = 10;
       const ironW = 40; const ironH = 60;
-      const ironX = frameX - ironW / 2;
 
-      // 重物Y - 根据拉力计滑块位置
+      // 铁块完全浸没时，铁块顶部刚好在水面下
+      // 水面在 spoutY + 2
+      // 完全浸没时 ironTop = spoutY + 2 - a little, ironBottom = ironTop + ironH
+      // 此时 sliderY + 30(挂绳偏移) + ironH(铁块) 底部应到 spoutY + 2 + ironH - 几个px
+      const waterSurfaceY = spoutY + 2;
+      // 完全浸没时铁块顶部Y = waterSurfaceY - 5 (略低于水面)
+      const ironTopWhenSubmerged = waterSurfaceY - 5;
+      // sliderY + 30 = ironTopWhenSubmerged  =>  sliderY = ironTopWhenSubmerged - 30
+      const sliderYMax = ironTopWhenSubmerged - 30;
+      const sliderMinY = frameTopY + 30;
+      // 限定滑块范围：sliderMinY 到 sliderYMax
+      const sliderY = sliderMinY + (sliderYMax - sliderMinY) * st.sliderPos;
+
+      // 重物Y
       let ironY: number;
       if (st.objectPos === 'hanging') {
-        ironY = sliderY + 30; // 挂在拉力计下方
+        ironY = sliderY + 30;
       } else {
-        ironY = cupY + cupH - ironH - 10; // 桌上
+        ironY = cupY + cupH - ironH - 10;
       }
 
       // --- 绘制溢水杯 ---
-      // 杯体
       ctx.strokeStyle = '#64748b';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      // 左壁
       ctx.moveTo(cupX, cupY);
       ctx.lineTo(cupX, cupY + cupH);
-      // 底
       ctx.lineTo(cupX + cupW, cupY + cupH);
-      // 右壁到溢水口
       ctx.lineTo(cupX + cupW, spoutY);
       ctx.stroke();
 
-      // 溢水口 - 向右延伸
+      // 溢水口
       ctx.beginPath();
       ctx.moveTo(cupX + cupW, spoutY);
       ctx.lineTo(spoutEndX, spoutY);
-      // 溢水口下沿
       ctx.lineTo(spoutEndX, spoutY + 8);
       ctx.lineTo(cupX + cupW + 5, spoutY + 8);
       ctx.stroke();
@@ -253,13 +215,10 @@ export default function ArchimedesLab() {
       ctx.stroke();
 
       // 水
-      const baseWaterY = spoutY + 2; // 刚好在溢水口
-      const waterSurfaceY = baseWaterY - st.overflowProgress * 2; // 水面微小变化
-
+      const baseWaterY = spoutY + 2;
       ctx.fillStyle = 'rgba(59, 130, 246, 0.3)';
       ctx.beginPath();
       ctx.moveTo(cupX + 3, baseWaterY);
-      // 水面波浪
       for (let x = cupX + 3; x <= cupX + cupW - 3; x += 3) {
         const wave = Math.sin(x * 0.08 + st.time * 3) * 1.5 * (st.overflowProgress > 0.01 ? 1 : 0.3);
         ctx.lineTo(x, baseWaterY + wave);
@@ -271,13 +230,7 @@ export default function ArchimedesLab() {
 
       // 水面光泽
       ctx.fillStyle = 'rgba(147, 197, 253, 0.4)';
-      ctx.beginPath();
-      ctx.moveTo(cupX + 10, baseWaterY + 1);
-      ctx.lineTo(cupX + cupW - 10, baseWaterY + 1);
-      ctx.lineTo(cupX + cupW - 10, baseWaterY + 4);
-      ctx.lineTo(cupX + 10, baseWaterY + 4);
-      ctx.closePath();
-      ctx.fill();
+      ctx.fillRect(cupX + 10, baseWaterY + 1, cupW - 20, 3);
 
       // 液体标签
       ctx.fillStyle = '#3b82f6';
@@ -285,34 +238,95 @@ export default function ArchimedesLab() {
       ctx.textAlign = 'left';
       ctx.fillText('水 (ρ=1.0×10³ kg/m³)', cupX + 5, cupY + cupH + 20);
 
-      // --- 绘制烧杯 ---
+      // --- 绘制量杯 (graduated cylinder) ---
+      // 杯体 - 梯形（底宽上窄）
+      const mCupBottomW = mCupW;
+      const mCupTopW = mCupW - 10;
+      const mCupBottomLeft = mCupX;
+      const mCupTopLeft = mCupX + 5;
       ctx.strokeStyle = '#64748b';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(beakerX, beakerY);
-      ctx.lineTo(beakerX, beakerY + beakerH);
-      ctx.lineTo(beakerX + beakerW, beakerY + beakerH);
-      ctx.lineTo(beakerX + beakerW, beakerY);
+      ctx.moveTo(mCupTopLeft, mCupY);
+      ctx.lineTo(mCupBottomLeft, mCupY + mCupH);
+      ctx.lineTo(mCupBottomLeft + mCupBottomW, mCupY + mCupH);
+      ctx.lineTo(mCupTopLeft + mCupTopW, mCupY);
       ctx.stroke();
 
-      // 烧杯中的水
+      // 量杯底座
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(mCupBottomLeft - 5, mCupY + mCupH, mCupBottomW + 10, 6);
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(mCupBottomLeft - 5, mCupY + mCupH, mCupBottomW + 10, 6);
+
+      // 量杯刻度 - 以 m³ 为单位
+      ctx.fillStyle = '#475569';
+      ctx.font = '8px sans-serif';
+      ctx.textAlign = 'left';
+      const maxVolML = 100; // 量杯最大 100mL = 1×10⁻⁴ m³
+      const scaleSteps = 5;
+      for (let i = 0; i <= scaleSteps; i++) {
+        const ratio = i / scaleSteps;
+        const markY = mCupY + mCupH - 3 - ratio * (mCupH - 10);
+        // 刻度线
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(mCupBottomLeft + 3, markY);
+        ctx.lineTo(mCupBottomLeft + 12, markY);
+        ctx.stroke();
+        // 刻度文字
+        const volML = Math.round(maxVolML * ratio);
+        const volM3 = volML * 1e-6; // mL to m³
+        ctx.fillText(`${volM3.toExponential(0)}`, mCupBottomLeft + 14, markY + 3);
+      }
+      // 单位标注
+      ctx.fillStyle = '#64748b';
+      ctx.font = '9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('(m³)', mCupX + mCupW + 25, mCupY + mCupH / 2);
+
+      // 量杯中的水
       if (st.beakerWaterLevel > 0.005) {
-        const bWaterH = Math.min(st.beakerWaterLevel * beakerH * 0.9, beakerH - 3);
+        const bWaterH = Math.min(st.beakerWaterLevel * mCupH * 0.85, mCupH - 6);
+        const bWaterBottom = mCupY + mCupH - 3;
+        const bWaterTop = bWaterBottom - bWaterH;
+
+        // 水面宽度插值（梯形）
+        const topRatio = (bWaterTop - mCupY) / mCupH;
+        const bottomRatio = (bWaterBottom - mCupY) / mCupH;
+        const topW = mCupTopW * (1 - topRatio) + mCupBottomW * topRatio;
+        const bottomW = mCupTopW * (1 - bottomRatio) + mCupBottomW * bottomRatio;
+        const topLeft = mCupTopLeft * (1 - topRatio) + mCupBottomLeft * topRatio;
+        const botLeft = mCupTopLeft * (1 - bottomRatio) + mCupBottomLeft * bottomRatio;
+
         ctx.fillStyle = 'rgba(59, 130, 246, 0.35)';
-        ctx.fillRect(beakerX + 2, beakerY + beakerH - bWaterH, beakerW - 4, bWaterH - 2);
+        ctx.beginPath();
+        ctx.moveTo(topLeft + 3, bWaterTop);
+        ctx.lineTo(botLeft + 3, bWaterBottom);
+        ctx.lineTo(botLeft + bottomW - 3, bWaterBottom);
+        ctx.lineTo(topLeft + topW - 3, bWaterTop);
+        ctx.closePath();
+        ctx.fill();
+
+        // 当前水量标注
+        const displacedVol = IRON_VOLUME * st.overflowProgress;
+        const volM3 = displacedVol;
+        ctx.fillStyle = '#2563eb';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${volM3.toExponential(2)} m³`, mCupX + mCupW / 2, bWaterTop + 14);
       }
 
       // --- 溢出的水流 ---
       if (st.overflowProgress > 0.01 && Math.abs(st.overflowProgress - targetOverflow) > 0.003) {
-        // 溢水口到烧杯的水流
         ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(spoutEndX - 5, spoutY + 4);
-
-        // 水流曲线
-        const flowEndX = beakerX + beakerW / 2;
-        const flowEndY = beakerY + 5;
+        const flowEndX = mCupX + mCupW / 2;
+        const flowEndY = mCupY + 5;
         const cp1x = spoutEndX + 5;
         const cp1y = spoutY + 40;
         const cp2x = flowEndX - 10;
@@ -320,7 +334,6 @@ export default function ArchimedesLab() {
         ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, flowEndX, flowEndY);
         ctx.stroke();
 
-        // 水滴粒子
         for (const drop of st.waterDrops) {
           const t = 1 - drop.life / 60;
           const dx = spoutEndX + (flowEndX - spoutEndX) * t;
@@ -332,38 +345,42 @@ export default function ArchimedesLab() {
         }
       }
 
-      // --- 绘制电子秤 ---
+      // --- 绘制电子秤 (bigger, font doubled) ---
+      const scaleW = 130;
+      const scaleH = 18;
       // 秤台
       ctx.fillStyle = '#e2e8f0';
-      ctx.fillRect(scaleCX - 50, scaleCY, 100, 12);
+      ctx.fillRect(scaleCX - scaleW / 2, scaleCY, scaleW, scaleH);
       ctx.strokeStyle = '#94a3b8';
       ctx.lineWidth = 1;
-      ctx.strokeRect(scaleCX - 50, scaleCY, 100, 12);
+      ctx.strokeRect(scaleCX - scaleW / 2, scaleCY, scaleW, scaleH);
 
       // 秤底座
       ctx.fillStyle = '#cbd5e1';
-      ctx.fillRect(scaleCX - 40, scaleCY + 12, 80, 8);
+      ctx.fillRect(scaleCX - scaleW / 2 + 10, scaleCY + scaleH, scaleW - 20, 10);
 
-      // 电子秤显示屏
+      // 电子秤显示屏 (bigger)
+      const dispW = 110;
+      const dispH = 20;
       ctx.fillStyle = '#1e293b';
-      ctx.fillRect(scaleCX - 35, scaleCY + 2, 70, 9);
+      ctx.fillRect(scaleCX - dispW / 2, scaleCY + 3, dispW, dispH);
+      // 绿色读数 (font doubled: 9px → 18px)
       ctx.fillStyle = '#22c55e';
-      ctx.font = 'bold 9px monospace';
+      ctx.font = 'bold 18px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(`${st.scaleReading.toFixed(2)} N`, scaleCX, scaleCY + 10);
+      ctx.fillText(`${st.scaleReading.toFixed(2)} N`, scaleCX, scaleCY + 3 + dispH - 3);
 
       // 电子秤标签
       ctx.fillStyle = '#64748b';
-      ctx.font = '10px sans-serif';
-      ctx.fillText('电子秤', scaleCX, scaleCY + 28);
+      ctx.font = '12px sans-serif';
+      ctx.fillText('电子秤', scaleCX, scaleCY + scaleH + 22);
 
       // --- 绘制拉力计框架 ---
-      // 竖直导轨
       ctx.strokeStyle = '#94a3b8';
       ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.moveTo(frameX, frameTopY);
-      ctx.lineTo(frameX, sliderMaxY + 20);
+      ctx.lineTo(frameX, sliderYMax + 30);
       ctx.stroke();
 
       // 顶部横梁
@@ -373,11 +390,10 @@ export default function ArchimedesLab() {
       // 滑块
       ctx.fillStyle = '#475569';
       ctx.fillRect(frameX - 18, sliderY - 8, 36, 16);
-      // 滑块凹槽（方便拖拽视觉）
       ctx.fillStyle = '#64748b';
       ctx.fillRect(frameX - 5, sliderY - 3, 10, 6);
 
-      // 拉力计表盘 - 在滑块上
+      // 拉力计表盘
       const meterX = frameX + 55;
       const meterY = sliderY;
       ctx.beginPath();
@@ -388,7 +404,7 @@ export default function ArchimedesLab() {
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // 拉力计刻度弧
+      // 刻度弧
       ctx.strokeStyle = '#94a3b8';
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -408,16 +424,14 @@ export default function ArchimedesLab() {
 
       // 拉力计读数
       ctx.fillStyle = '#1e293b';
-      ctx.font = 'bold 10px sans-serif';
+      ctx.font = 'bold 11px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(`${reading.toFixed(2)}N`, meterX, meterY + 32);
-
-      // "拉力计"标签
       ctx.fillStyle = '#475569';
       ctx.font = '10px sans-serif';
       ctx.fillText('弹簧拉力计', meterX, meterY - 28);
 
-      // --- 拉力计到重物的线（挂绳）---
+      // --- 挂绳 ---
       if (st.objectPos === 'hanging') {
         ctx.strokeStyle = '#78716c';
         ctx.lineWidth = 1.5;
@@ -437,16 +451,14 @@ export default function ArchimedesLab() {
       }
 
       // --- 绘制铁块(圆柱体) ---
-      // 根据位置决定X
       let objDrawX: number;
       if (st.objectPos === 'hanging') {
         objDrawX = frameX - ironW / 2;
       } else {
-        objDrawX = cupX - ironW - 30; // 桌上，溢水杯左边
+        objDrawX = cupX - ironW - 30;
       }
       const objDrawY = ironY;
 
-      // 圆柱体铁块 - 侧面
       const ironGrad = ctx.createLinearGradient(objDrawX, objDrawY, objDrawX + ironW, objDrawY);
       ironGrad.addColorStop(0, '#9ca3af');
       ironGrad.addColorStop(0.3, '#d1d5db');
@@ -455,7 +467,7 @@ export default function ArchimedesLab() {
       ctx.fillStyle = ironGrad;
       ctx.fillRect(objDrawX, objDrawY, ironW, ironH);
 
-      // 顶面（椭圆）
+      // 顶面椭圆
       ctx.fillStyle = '#e5e7eb';
       ctx.beginPath();
       ctx.ellipse(objDrawX + ironW / 2, objDrawY, ironW / 2, 8, 0, 0, Math.PI * 2);
@@ -464,7 +476,7 @@ export default function ArchimedesLab() {
       ctx.lineWidth = 1;
       ctx.stroke();
 
-      // 底面
+      // 底面椭圆
       ctx.fillStyle = '#9ca3af';
       ctx.beginPath();
       ctx.ellipse(objDrawX + ironW / 2, objDrawY + ironH, ironW / 2, 8, 0, 0, Math.PI * 2);
@@ -473,28 +485,21 @@ export default function ArchimedesLab() {
       ctx.lineWidth = 1;
       ctx.stroke();
 
-      // 铁块标签
       ctx.fillStyle = '#374151';
       ctx.font = 'bold 10px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('铁块', objDrawX + ironW / 2, objDrawY + ironH / 2 + 3);
 
-      // --- 重物浸入水中时，水中的物体部分 ---
+      // --- 水中铁块半透明覆盖 ---
       if (st.objectPos === 'hanging' && st.currentImmersion > 0.01) {
-        // 重物底部Y
         const objBottomY = ironY + ironH;
-        // 水面Y
         const waterSurfY = baseWaterY;
-        // 浸入部分
         const immersedTop = Math.max(ironY, waterSurfY);
-        const immersedBottom = objBottomY;
 
-        if (immersedBottom > waterSurfY) {
-          // 水下部分带水色叠加
+        if (objBottomY > waterSurfY) {
           ctx.fillStyle = 'rgba(59, 130, 246, 0.15)';
-          ctx.fillRect(objDrawX, immersedTop, ironW, immersedBottom - immersedTop);
+          ctx.fillRect(objDrawX, immersedTop, ironW, objBottomY - immersedTop);
 
-          // 气泡
           if (st.overflowProgress > 0.01) {
             for (let i = 0; i < 3; i++) {
               const bx = objDrawX + 5 + Math.random() * (ironW - 10);
@@ -516,7 +521,7 @@ export default function ArchimedesLab() {
         ctx.fillStyle = `rgba(59, 130, 246, ${alpha})`;
         ctx.font = '11px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('↕ 向下拖拽滑块使铁块浸入水中', frameX, sliderMaxY + 38);
+        ctx.fillText('↕ 向下拖拽滑块使铁块浸入水中', frameX, sliderYMax + 50);
       }
 
       // --- 步骤提示 ---
@@ -526,11 +531,10 @@ export default function ArchimedesLab() {
       } else if (st.sliderPos === 0 && st.currentImmersion < 0.01) {
         stepText = '步骤2：向下拖拽拉力计滑块，使铁块浸入水中';
       } else if (!st.waterStable) {
-        stepText = '观察：水溢出流入烧杯，等待示数稳定...';
+        stepText = '观察：水溢出流入量杯，等待示数稳定...';
       } else {
         stepText = '实验数据已记录！可重置滑块重复实验';
       }
-
       ctx.fillStyle = '#475569';
       ctx.font = 'bold 12px sans-serif';
       ctx.textAlign = 'left';
@@ -551,15 +555,16 @@ export default function ArchimedesLab() {
     const immersion = st.currentImmersion;
     const phys = getPhysics(immersion);
 
-    // 检查是否已有相同的实验行
     const G = IRON_WEIGHT;
     const F = phys.dynamometer;
-    const buoyancy = phys.buoyancy;
-    const displacedWeight = phys.displacedWeight;
+    const buoyancyGF = G - F; // 浮力 = G - F
+    const displacedWeight = phys.displacedWeight; // 排出水重力
+    const displacedVol = phys.displacedVol; // 排出水体积
+    const rhoGV = WATER_DENSITY * G_ACCEL * displacedVol; // ρ液gV排
 
-    // 延迟显示第3/4列
     const newRow: DataRow = {
-      G, F, buoyancy, displacedWeight,
+      G, F, buoyancyGF, displacedWeight, displacedVol, rhoGV,
+      rhoLiquid: WATER_DENSITY,
       showResult: false,
       animPhase: 0,
     };
@@ -567,14 +572,12 @@ export default function ArchimedesLab() {
     st.dataRows = [...st.dataRows, newRow];
     setDataRows([...st.dataRows]);
 
-    // 0.5秒后显示结果
     setTimeout(() => {
       st.dataRows[st.dataRows.length - 1].showResult = true;
       st.dataRows[st.dataRows.length - 1].animPhase = 1;
       setDataRows([...st.dataRows]);
       setAnimHighlight(st.dataRows.length - 1);
 
-      // 动画完成后显示结论
       setTimeout(() => {
         st.showConclusion = true;
         st.conclusionTimer = 60;
@@ -583,7 +586,6 @@ export default function ArchimedesLab() {
     }, 500);
   }, [getPhysics]);
 
-  // Mouse/Touch interaction handlers
   const getCanvasCoords = useCallback((e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -593,15 +595,9 @@ export default function ArchimedesLab() {
 
     if ('touches' in e) {
       const touch = e.touches[0] || e.changedTouches[0];
-      return {
-        x: (touch.clientX - rect.left) * scaleX,
-        y: (touch.clientY - rect.top) * scaleY,
-      };
+      return { x: (touch.clientX - rect.left) * scaleX, y: (touch.clientY - rect.top) * scaleY };
     }
-    return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
-    };
+    return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
   }, []);
 
   const handlePointerDown = useCallback((e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -609,22 +605,26 @@ export default function ArchimedesLab() {
     const { x, y } = getCanvasCoords(e);
     const st = stRef.current;
 
-    const frameX = 300 + 160 / 2; // cupX + cupW/2
-    const sliderMinY = 20 + 30;
-    const sliderMaxY = 100 + 260 - 30;
-    const sliderY = sliderMinY + (sliderMaxY - sliderMinY) * st.sliderPos;
+    const frameX = 300 + 160 / 2;
+    const cupY = 180; const spoutY = cupY + 50;
+    const ironH = 60; const ironW = 40;
+    const waterSurfaceY = spoutY + 2;
+    const ironTopWhenSubmerged = waterSurfaceY - 5;
+    const sliderYMax = ironTopWhenSubmerged - 30;
+    const sliderMinY = 10 + 30;
+    const sliderY = sliderMinY + (sliderYMax - sliderMinY) * st.sliderPos;
 
-    // Check if clicking on the iron block (when on table)
+    // Click on iron block (on table)
     if (st.objectPos === 'table') {
-      const ironX = 300 - 40 - 30;
-      const ironY = 100 + 260 - 60 - 10;
-      if (x >= ironX && x <= ironX + 40 && y >= ironY && y <= ironY + 60) {
+      const ironX = 300 - ironW - 30;
+      const ironY = cupY + 200 - ironH - 10;
+      if (x >= ironX && x <= ironX + ironW && y >= ironY && y <= ironY + ironH) {
         st.dragging = 'object';
         return;
       }
     }
 
-    // Check if clicking on the slider
+    // Click on slider
     if (st.objectPos === 'hanging') {
       if (Math.abs(x - frameX) < 25 && Math.abs(y - sliderY) < 15) {
         st.dragging = 'slider';
@@ -639,9 +639,13 @@ export default function ArchimedesLab() {
     const st = stRef.current;
 
     if (st.dragging === 'slider') {
-      const sliderMinY = 50;
-      const sliderMaxY = 330;
-      const newSlider = Math.max(0, Math.min(1, (y - sliderMinY) / (sliderMaxY - sliderMinY)));
+      const cupY = 180; const spoutY = cupY + 50;
+      const waterSurfaceY = spoutY + 2;
+      const ironTopWhenSubmerged = waterSurfaceY - 5;
+      const sliderYMax = ironTopWhenSubmerged - 30;
+      const sliderMinY = 10 + 30;
+      // 限定范围：0 (最高) 到 1 (铁块完全浸没)
+      const newSlider = Math.max(0, Math.min(1, (y - sliderMinY) / (sliderYMax - sliderMinY)));
       st.sliderPos = newSlider;
       setSliderValue(newSlider);
     }
@@ -650,14 +654,12 @@ export default function ArchimedesLab() {
   const handlePointerUp = useCallback(() => {
     const st = stRef.current;
     if (st.dragging === 'object') {
-      // Snap to hanging position
       st.objectPos = 'hanging';
       setObjectPos('hanging');
     }
     st.dragging = 'none';
   }, []);
 
-  // Reset experiment
   const handleReset = useCallback(() => {
     const st = stRef.current;
     st.objectPos = 'table';
@@ -683,13 +685,16 @@ export default function ArchimedesLab() {
     setAnimHighlight(null);
   }, []);
 
-  // Full reset including data
   const handleFullReset = useCallback(() => {
     handleReset();
     const st = stRef.current;
     st.dataRows = [];
     setDataRows([]);
   }, [handleReset]);
+
+  // 计算当前排开水体积 (用于实时显示)
+  const displacedVol = IRON_VOLUME * currentImmersion;
+  const rhoGV = WATER_DENSITY * G_ACCEL * displacedVol;
 
   return (
     <div className="flex flex-col lg:flex-row gap-4">
@@ -710,7 +715,7 @@ export default function ArchimedesLab() {
           onTouchEnd={handlePointerUp}
         />
 
-        {/* Slider control for fine adjustment */}
+        {/* Slider control */}
         <div className="mt-3 flex items-center gap-3 px-2">
           <span className="text-xs text-gray-500 whitespace-nowrap">拉力计滑块:</span>
           <input
@@ -727,8 +732,8 @@ export default function ArchimedesLab() {
             className="flex-1 accent-blue-500"
             disabled={objectPos !== 'hanging'}
           />
-          <span className="text-xs text-gray-500 w-12">
-            {objectPos === 'hanging' ? `${Math.round(currentImmersion * 100)}%` : '--'}
+          <span className="text-xs text-gray-500 w-16">
+            {objectPos === 'hanging' ? `浸入${Math.round(currentImmersion * 100)}%` : '--'}
           </span>
         </div>
 
@@ -745,7 +750,7 @@ export default function ArchimedesLab() {
       </div>
 
       {/* Data Table & Conclusion */}
-      <div className="lg:w-80 space-y-4">
+      <div className="lg:w-[420px] space-y-4">
         {/* Instrument readings */}
         <div className="bg-white rounded-xl border border-blue-100 p-4 space-y-3">
           <h4 className="font-bold text-gray-800 text-sm flex items-center gap-2">
@@ -761,19 +766,17 @@ export default function ArchimedesLab() {
               <p className="text-lg font-bold text-gray-800">{scaleReading.toFixed(2)} <span className="text-xs font-normal">N</span></p>
             </div>
           </div>
-          {objectPos === 'hanging' && (
-            <div className="bg-blue-50 rounded-lg p-2 text-center text-xs text-blue-700">
-              铁块重量 G = {IRON_WEIGHT.toFixed(2)} N
-              {dynamometerReading > 0.01 && currentImmersion > 0.01 && (
-                <span className="ml-2">
-                  | 浮力 = G - F = {(IRON_WEIGHT - dynamometerReading).toFixed(2)} N
-                </span>
-              )}
+          {objectPos === 'hanging' && currentImmersion > 0.01 && (
+            <div className="bg-blue-50 rounded-lg p-2 text-center text-xs text-blue-700 space-y-0.5">
+              <p>物体重力 G(N) = {IRON_WEIGHT.toFixed(2)}</p>
+              <p>浮力 = G - F = {(IRON_WEIGHT - dynamometerReading).toFixed(2)} N</p>
+              <p>排开水体积 V排(m³) = {displacedVol.toExponential(2)}</p>
+              <p>ρ液gV排(N) = {rhoGV.toFixed(2)}</p>
             </div>
           )}
         </div>
 
-        {/* Data table */}
+        {/* Data table - 7 columns */}
         <div className="bg-white rounded-xl border border-blue-100 p-4">
           <h4 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
             📋 实验数据记录
@@ -783,43 +786,43 @@ export default function ArchimedesLab() {
             <p className="text-xs text-gray-400 text-center py-4">完成实验后，数据将自动记录在此</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-xs border-collapse">
+              <table className="w-full text-[10px] border-collapse min-w-[400px]">
                 <thead>
                   <tr className="bg-slate-50">
-                    <th className="border border-slate-200 px-2 py-1.5 text-slate-600 font-medium">组</th>
-                    <th className="border border-slate-200 px-2 py-1.5 text-slate-600 font-medium">G (N)</th>
-                    <th className="border border-slate-200 px-2 py-1.5 text-slate-600 font-medium">F (N)</th>
-                    <th className="border border-slate-200 px-2 py-1.5 text-blue-600 font-medium">G-F (N)</th>
-                    <th className="border border-slate-200 px-2 py-1.5 text-blue-600 font-medium">G水 (N)</th>
+                    <th className="border border-slate-200 px-1 py-1.5 text-slate-600 font-medium">组</th>
+                    <th className="border border-slate-200 px-1 py-1.5 text-slate-600 font-medium whitespace-nowrap">物体重力<br/>G(N)</th>
+                    <th className="border border-slate-200 px-1 py-1.5 text-slate-600 font-medium whitespace-nowrap">拉力<br/>F(N)</th>
+                    <th className="border border-slate-200 px-1 py-1.5 text-blue-600 font-medium whitespace-nowrap">浮力<br/>G-F(N)</th>
+                    <th className="border border-slate-200 px-1 py-1.5 text-blue-600 font-medium whitespace-nowrap">排水重力<br/>G水(N)</th>
+                    <th className="border border-slate-200 px-1 py-1.5 text-blue-600 font-medium whitespace-nowrap">排水体积<br/>V排(m³)</th>
+                    <th className="border border-slate-200 px-1 py-1.5 text-blue-600 font-medium whitespace-nowrap">ρ液gV排<br/>(N)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {dataRows.map((row, i) => (
                     <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
-                      <td className="border border-slate-200 px-2 py-1.5 text-center text-slate-500">{i + 1}</td>
-                      <td className="border border-slate-200 px-2 py-1.5 text-center">{row.G.toFixed(2)}</td>
-                      <td className="border border-slate-200 px-2 py-1.5 text-center">{row.F.toFixed(2)}</td>
-                      <td className={`border border-slate-200 px-2 py-1.5 text-center font-bold transition-all duration-500 ${
-                        row.showResult
-                          ? animHighlight === i ? 'text-blue-600 scale-110' : 'text-blue-600'
-                          : 'text-gray-300'
-                      }`}
-                        style={animHighlight === i && row.showResult && row.animPhase === 1
-                          ? { transform: 'scale(1.2)', fontSize: '14px' }
-                          : {}}
-                      >
-                        {row.showResult ? row.buoyancy.toFixed(2) : '...'}
+                      <td className="border border-slate-200 px-1 py-1.5 text-center text-slate-500">{i + 1}</td>
+                      <td className="border border-slate-200 px-1 py-1.5 text-center">{row.G.toFixed(2)}</td>
+                      <td className="border border-slate-200 px-1 py-1.5 text-center">{row.F.toFixed(2)}</td>
+                      <td className={`border border-slate-200 px-1 py-1.5 text-center font-bold ${
+                        row.showResult ? 'text-blue-600' : 'text-gray-300'
+                      }`}>
+                        {row.showResult ? row.buoyancyGF.toFixed(2) : '...'}
                       </td>
-                      <td className={`border border-slate-200 px-2 py-1.5 text-center font-bold transition-all duration-500 ${
-                        row.showResult
-                          ? animHighlight === i ? 'text-blue-600 scale-110' : 'text-blue-600'
-                          : 'text-gray-300'
-                      }`}
-                        style={animHighlight === i && row.showResult && row.animPhase === 1
-                          ? { transform: 'scale(1.2)', fontSize: '14px' }
-                          : {}}
-                      >
+                      <td className={`border border-slate-200 px-1 py-1.5 text-center font-bold ${
+                        row.showResult ? 'text-blue-600' : 'text-gray-300'
+                      }`}>
                         {row.showResult ? row.displacedWeight.toFixed(2) : '...'}
+                      </td>
+                      <td className={`border border-slate-200 px-1 py-1.5 text-center font-bold ${
+                        row.showResult ? 'text-blue-600' : 'text-gray-300'
+                      }`}>
+                        {row.showResult && row.displacedVol != null ? row.displacedVol.toExponential(2) : '...'}
+                      </td>
+                      <td className={`border border-slate-200 px-1 py-1.5 text-center font-bold ${
+                        row.showResult ? 'text-blue-600' : 'text-gray-300'
+                      }`}>
+                        {row.showResult && row.rhoGV != null ? row.rhoGV.toFixed(2) : '...'}
                       </td>
                     </tr>
                   ))}
@@ -831,7 +834,7 @@ export default function ArchimedesLab() {
 
         {/* Conclusion */}
         {showConclusion && dataRows.length > 0 && (
-          <div className="bg-blue-50 rounded-xl border-2 border-blue-300 p-4 animate-fadeIn">
+          <div className="bg-blue-50 rounded-xl border-2 border-blue-300 p-4">
             <h4 className="font-bold text-blue-800 text-sm mb-2">🎯 实验结论</h4>
             <p className="text-blue-700 text-sm leading-relaxed">
               浮力 = 排开液体的重力 (G水)
@@ -840,10 +843,13 @@ export default function ArchimedesLab() {
               F浮 = G排 = m水·g = ρ液·V排·g
             </p>
             <p className="text-xs text-blue-500 mt-2">
-              即：F浮 = ρ液 × g × V排 = {WATER_DENSITY} × {G_ACCEL} × {(IRON_VOLUME * currentImmersion * 1e6).toFixed(1)}×10⁻⁶ m³
+              即：F浮 = ρ液 × g × V排 = {WATER_DENSITY} × {G_ACCEL} × {displacedVol.toExponential(2)} m³
             </p>
             <p className="text-xs text-blue-500 mt-1">
-              = {(WATER_DENSITY * G_ACCEL * IRON_VOLUME * currentImmersion).toFixed(2)} N
+              = {rhoGV.toFixed(2)} N
+            </p>
+            <p className="text-xs text-blue-400 mt-2">
+              ※ 浮力(G-F) = 排水重力(G水) = ρ液gV排，三者相等验证了阿基米德定律
             </p>
           </div>
         )}
@@ -851,9 +857,9 @@ export default function ArchimedesLab() {
         {/* Experiment info */}
         <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 text-xs text-slate-500 space-y-1">
           <p><strong>铁块密度:</strong> {IRON_DENSITY} kg/m³</p>
-          <p><strong>铁块体积:</strong> {IRON_VOLUME * 1e6} cm³</p>
+          <p><strong>铁块体积:</strong> {IRON_VOLUME * 1e6} cm³ = {IRON_VOLUME.toExponential(0)} m³</p>
           <p><strong>铁块重量:</strong> {IRON_WEIGHT.toFixed(2)} N</p>
-          <p><strong>液体(水)密度:</strong> {WATER_DENSITY} kg/m³</p>
+          <p><strong>液体密度ρ液:</strong> {WATER_DENSITY} kg/m³</p>
         </div>
       </div>
     </div>
