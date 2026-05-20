@@ -38,7 +38,20 @@ export default function EditorPage() {
     const stored = localStorage.getItem('physics-editor-data');
     if (stored) {
       try {
-        setEditData(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        // Clean up invalid blob: URLs that become stale after page refresh
+        // These cause black screen because blob URLs only exist in the creating page session
+        const cleaned: Record<string, unknown> = {};
+        for (const [lawKey, lawData] of Object.entries(parsed)) {
+          const chapters = lawData as EditorChapter[];
+          cleaned[lawKey] = chapters.map((ch: EditorChapter) => {
+            if (ch.videoUrl && ch.videoUrl.startsWith('blob:')) {
+              return { ...ch, videoUrl: undefined, videoName: undefined };
+            }
+            return ch;
+          });
+        }
+        setEditData(cleaned as Record<LawKey, EditorChapter[]>);
       } catch {
         // ignore
       }
@@ -94,16 +107,27 @@ export default function EditorPage() {
     setUploadMsg('正在上传...');
 
     try {
-      const url = URL.createObjectURL(file);
-      setEditData(prev => ({
-        ...prev,
-        [selectedLaw]: prev[selectedLaw].map((ch, i) =>
-          i === selectedChapter ? { ...ch, videoUrl: url, videoName: file.name } : ch
-        ),
-      }));
-      setUploadStatus('success');
-      setUploadMsg(`上传成功: ${file.name}`);
-      setTimeout(() => { setUploadStatus('idle'); setUploadMsg(''); }, 3000);
+      // Convert file to base64 Data URL so it persists across page refreshes and route changes
+      // blob: URLs are only valid for the current page session and would cause black screen on reload
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        setEditData(prev => ({
+          ...prev,
+          [selectedLaw]: prev[selectedLaw].map((ch, i) =>
+            i === selectedChapter ? { ...ch, videoUrl: dataUrl, videoName: file.name } : ch
+          ),
+        }));
+        setUploadStatus('success');
+        setUploadMsg(`上传成功: ${file.name}`);
+        setTimeout(() => { setUploadStatus('idle'); setUploadMsg(''); }, 3000);
+      };
+      reader.onerror = () => {
+        setUploadStatus('error');
+        setUploadMsg('文件读取失败，请重试');
+        setTimeout(() => { setUploadStatus('idle'); setUploadMsg(''); }, 3000);
+      };
+      reader.readAsDataURL(file);
     } catch {
       setUploadStatus('error');
       setUploadMsg('上传失败，请重试');
@@ -232,6 +256,7 @@ export default function EditorPage() {
                 {isVideoFile ? (
                   <div className="w-full max-h-80 bg-black rounded-lg overflow-hidden">
                     <video
+                      key={chapter.videoUrl}
                       src={chapter.videoUrl}
                       className="w-full h-full object-contain"
                       controls

@@ -857,8 +857,10 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
   const cards = knowledgeCardsData[lawKey];
 
   // Check if current chapter has an uploaded video
-  const hasUploadedVideo = Boolean(chapter.videoUrl && chapter.videoUrl.trim());
-  const videoUrl = chapter.videoUrl || '';
+  // blob: URLs are session-only and become invalid after page refresh, so treat them as missing
+  const isValidVideoUrl = chapter.videoUrl && chapter.videoUrl.trim() && !chapter.videoUrl.startsWith('blob:');
+  const hasUploadedVideo = Boolean(isValidVideoUrl);
+  const videoUrl = isValidVideoUrl ? chapter.videoUrl! : '';
   const isVideoFile = videoUrl && !videoUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
 
   return (
