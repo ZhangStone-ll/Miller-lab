@@ -318,7 +318,7 @@ export default function ArchimedesLab() {
         const volReadY = mCupY + mCupH / 2;
         ctx.fillText(`${volM3.toExponential(2)}`, volReadX, volReadY);
         ctx.font = '10px sans-serif';
-        ctx.fillText('m³', volReadX, volReadY + 14);
+        ctx.fillText('m³', volReadX, volReadY + 16);
       }
 
       // --- 溢出的水流 ---
