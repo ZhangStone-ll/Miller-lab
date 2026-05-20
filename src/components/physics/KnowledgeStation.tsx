@@ -14,7 +14,7 @@ interface KnowledgeStationProps {
 const knowledgeCardsData: Record<string, { background: string; derivation: string; conclusion: string; application: string }> = {
   archimedes: {
     background: '古希腊国王怀疑工匠在纯金王冠中掺银，却无法测量不规则物体的体积。阿基米德在洗澡时观察到水溢出浴缸，灵光一闪发现了排水法测体积的原理，由此揭开了浮力与排开液体重力之间的关系。',
-    derivation: '① 设柱体底面积S、高h，浸没在液体中：V排=Sh\n② 下表面受向上压力F上=ρ液gh下S，上表面受向下压力F下=ρ液gh上S\n③ F浮=F上-F下=ρ液gS(h下-h上)=ρ液gSh=ρ液gV排\n④ 此推导对任意形状物体均成立',
+    derivation: '① 设柱体底面积S、高h，浸没在液体中：V排=Sh\n② 下表面受向上压力F下=ρ液gh下S，上表面受向下压力F上=ρ液gh上S\n③ F浮=F下-F上=ρ液gS(h下-h上)=ρ液gSh=ρ液gV排\n④ 此推导对任意形状物体均成立',
     conclusion: '核心公式：F浮=ρ液gV排\n\n关键理解：\n① "浸在"包括完全浸没和部分浸入\n② 浮力只与液体密度和排开体积有关，与物体自身质量、密度无关',
     application: '🚢 轮船：空心结构增大V排，使F浮=G船而漂浮\n🤖 潜水艇：调节水舱改变自重，控制浮沉\n🎈 氢气球：排开空气的重力>自重，受空气浮力升空\n🧊 密度计：利用漂浮时F浮=G，V排反比于ρ液',
   },
@@ -217,7 +217,7 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
       // Force arrows on cylinder (animated)
       const arrowPulse = Math.sin(t * 0.05) * 3;
 
-      // F_up arrow (green, pointing up from bottom)
+      // F下 arrow (green, pointing up from bottom surface of cylinder)
       if (step >= 1) {
         c.strokeStyle = '#22c55e';
         c.fillStyle = '#22c55e';
@@ -227,7 +227,7 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
         c.moveTo(cx, cylTop + rH);
         c.lineTo(cx, cylTop + rH + upLen);
         c.stroke();
-        // Arrow head
+        // Arrow head (pointing up)
         c.beginPath();
         c.moveTo(cx - 6, cylTop + rH + 8);
         c.lineTo(cx, cylTop + rH);
@@ -235,10 +235,10 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
         c.fill();
         c.font = 'bold 12px sans-serif';
         c.textAlign = 'left';
-        c.fillText('F上 = ρ液gh下S', cx + 10, cylTop + rH + upLen / 2 + 4);
+        c.fillText('F下 = ρ液gh下S', cx + 10, cylTop + rH + upLen / 2 + 4);
       }
 
-      // F_down arrow (red, pointing down from top)
+      // F上 arrow (red, pointing down from top surface of cylinder)
       if (step >= 1) {
         c.strokeStyle = '#ef4444';
         c.fillStyle = '#ef4444';
@@ -248,7 +248,7 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
         c.moveTo(cx, cylTop);
         c.lineTo(cx, cylTop - downLen);
         c.stroke();
-        // Arrow head
+        // Arrow head (pointing down)
         c.beginPath();
         c.moveTo(cx - 6, cylTop - downLen + 8);
         c.lineTo(cx, cylTop - downLen);
@@ -256,7 +256,7 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
         c.fill();
         c.font = 'bold 12px sans-serif';
         c.textAlign = 'left';
-        c.fillText('F下 = ρ液gh上S', cx + 10, cylTop - downLen / 2 + 4);
+        c.fillText('F上 = ρ液gh上S', cx + 10, cylTop - downLen / 2 + 4);
       }
 
       // h_down and h_up labels
@@ -317,8 +317,8 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
         c.globalAlpha = Math.max(0, alpha2);
         c.fillStyle = '#374151';
         c.font = '13px sans-serif';
-        c.fillText('② F上 = ρ液gh下S', textX, textStartY + lineH * 2);
-        c.fillText('   F下 = ρ液gh上S', textX, textStartY + lineH * 2.7);
+        c.fillText('② F下 = ρ液gh下S', textX, textStartY + lineH * 2);
+        c.fillText('   F上 = ρ液gh上S', textX, textStartY + lineH * 2.7);
         c.globalAlpha = 1;
       }
 
@@ -328,7 +328,7 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
         c.globalAlpha = Math.max(0, alpha3);
         c.fillStyle = '#374151';
         c.font = '13px sans-serif';
-        c.fillText('③ F浮 = F上 - F下', textX, textStartY + lineH * 3.7);
+        c.fillText('③ F浮 = F下 - F上', textX, textStartY + lineH * 3.7);
         c.fillText('     = ρ液gS(h下 - h上)', textX, textStartY + lineH * 4.3);
         c.globalAlpha = 1;
       }
@@ -563,7 +563,7 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
   // TTS audio URI cache: persisted to localStorage for cross-page survival
   const CACHE_KEY = 'physics-tts-cache';
   const CACHE_VERSION_KEY = 'physics-tts-cache-version';
-  const CACHE_VERSION = 'v2'; // Bump version when TTS params change to invalidate old cache
+  const CACHE_VERSION = 'v3'; // Bump version when TTS params change to invalidate old cache
   const getTTSCache = (): Map<string, string> => {
     if (typeof window === 'undefined') return new Map();
     try {
