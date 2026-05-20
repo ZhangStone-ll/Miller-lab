@@ -238,21 +238,22 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
         c.fillText('F下 = ρ液gh下S', cx + 10, cylTop + rH + upLen / 2 + 4);
       }
 
-      // F上 arrow (red, pointing down from top surface of cylinder)
+      // F上 arrow (red, pointing down onto top surface of cylinder)
       if (step >= 1) {
         c.strokeStyle = '#ef4444';
         c.fillStyle = '#ef4444';
         c.lineWidth = 3;
         const downLen = 25 - arrowPulse;
+        // Arrow from above pointing DOWN onto the top surface
         c.beginPath();
-        c.moveTo(cx, cylTop);
-        c.lineTo(cx, cylTop - downLen);
+        c.moveTo(cx, cylTop - downLen);
+        c.lineTo(cx, cylTop);
         c.stroke();
-        // Arrow head (pointing down)
+        // Arrow head (pointing down, at top surface)
         c.beginPath();
-        c.moveTo(cx - 6, cylTop - downLen + 8);
-        c.lineTo(cx, cylTop - downLen);
-        c.lineTo(cx + 6, cylTop - downLen + 8);
+        c.moveTo(cx - 6, cylTop - 8);
+        c.lineTo(cx, cylTop);
+        c.lineTo(cx + 6, cylTop - 8);
         c.fill();
         c.font = 'bold 12px sans-serif';
         c.textAlign = 'left';
