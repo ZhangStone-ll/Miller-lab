@@ -755,7 +755,7 @@ export default function ArchimedesLab() {
           <h4 className="font-bold text-gray-800 text-sm flex items-center gap-2">
             📊 实时示数
           </h4>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="bg-slate-50 rounded-lg p-3 text-center">
               <p className="text-xs text-gray-500">拉力计示数 F</p>
               <p className="text-lg font-bold text-gray-800">{dynamometerReading.toFixed(2)} <span className="text-xs font-normal">N</span></p>
@@ -763,6 +763,10 @@ export default function ArchimedesLab() {
             <div className="bg-slate-50 rounded-lg p-3 text-center">
               <p className="text-xs text-gray-500">电子秤示数 G水</p>
               <p className="text-lg font-bold text-gray-800">{scaleReading.toFixed(2)} <span className="text-xs font-normal">N</span></p>
+            </div>
+            <div className="bg-slate-50 rounded-lg p-3 text-center">
+              <p className="text-xs text-gray-500">量杯溢出水体积</p>
+              <p className="text-base font-bold text-blue-600">{displacedVol.toExponential(2)} <span className="text-xs font-normal">m³</span></p>
             </div>
           </div>
           {objectPos === 'hanging' && currentImmersion > 0.01 && (
