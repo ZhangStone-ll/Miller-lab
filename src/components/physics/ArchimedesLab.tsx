@@ -308,13 +308,17 @@ export default function ArchimedesLab() {
         ctx.closePath();
         ctx.fill();
 
-        // 当前水量标注
+        // 当前水量标注（放在量杯右侧）
         const displacedVol = IRON_VOLUME * st.overflowProgress;
         const volM3 = displacedVol;
         ctx.fillStyle = '#2563eb';
-        ctx.font = 'bold 10px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${volM3.toExponential(2)} m³`, mCupX + mCupW / 2, bWaterTop + 14);
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'left';
+        const volReadX = mCupX + mCupW + 8;
+        const volReadY = mCupY + mCupH / 2;
+        ctx.fillText(`${volM3.toExponential(2)}`, volReadX, volReadY);
+        ctx.font = '10px sans-serif';
+        ctx.fillText('m³', volReadX, volReadY + 14);
       }
 
       // --- 溢出的水流 ---
@@ -855,8 +859,9 @@ export default function ArchimedesLab() {
           </div>
         )}
 
-        {/* Experiment info */}
+        {/* 附.实验环境固定参数 */}
         <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 text-xs text-slate-500 space-y-1">
+          <p className="text-slate-700 font-semibold mb-1">附.实验环境固定参数：</p>
           <p><strong>铁块密度:</strong> {IRON_DENSITY} kg/m³</p>
           <p><strong>铁块体积:</strong> {IRON_VOLUME * 1e6} cm³ = {IRON_VOLUME.toExponential(0)} m³</p>
           <p><strong>铁块重量:</strong> {IRON_WEIGHT.toFixed(2)} N</p>
