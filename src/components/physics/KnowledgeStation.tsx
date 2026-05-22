@@ -1499,7 +1499,721 @@ function AnimationScene({ type, isPlaying, lawKey }: { type: string; isPlaying: 
       c.fillText('欧姆定律：理解用电安全的基石', cw / 2, ch * 0.96);
     };
 
-    // ===================== END OHM'S LAW ANIMATIONS =====================
+    // ===================== HOOKE'S LAW ANIMATIONS =====================
+
+    const drawHookeIntro = (c: CanvasRenderingContext2D, cw: number, ch: number, t: number) => {
+      // Background - warm gradient
+      const bg = c.createLinearGradient(0, 0, 0, ch);
+      bg.addColorStop(0, '#1a1a2e');
+      bg.addColorStop(1, '#16213e');
+      c.fillStyle = bg;
+      c.fillRect(0, 0, cw, ch);
+
+      // Grid lines
+      c.strokeStyle = 'rgba(16, 185, 129, 0.06)';
+      c.lineWidth = 1;
+      for (let x = 0; x < cw; x += 30) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, ch); c.stroke(); }
+      for (let y = 0; y < ch; y += 30) { c.beginPath(); c.moveTo(0, y); c.lineTo(cw, y); c.stroke(); }
+
+      // Title fade in
+      const titleAlpha = Math.min(1, t / 40);
+      c.globalAlpha = titleAlpha;
+      c.fillStyle = '#10b981';
+      c.font = 'bold 22px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('弹力的秘密', cw / 2, ch * 0.08);
+
+      // === Spring animation (left side) ===
+      const springX = cw * 0.25;
+      const springTopY = ch * 0.2;
+      const springRestLen = ch * 0.3;
+      const stretchAmt = Math.sin(t * 0.03) * 30;
+      const springBotY = springTopY + springRestLen + stretchAmt;
+
+      // Fixed support at top
+      c.fillStyle = '#555';
+      c.fillRect(springX - 25, springTopY - 8, 50, 8);
+      c.fillStyle = '#888';
+      for (let i = 0; i < 5; i++) {
+        c.fillRect(springX - 20 + i * 10, springTopY - 14, 3, 8);
+      }
+
+      // Draw spring coils
+      const coils = 8;
+      const coilW = 18;
+      c.strokeStyle = '#10b981';
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.moveTo(springX, springTopY);
+      const segH = (springBotY - springTopY) / (coils * 2);
+      for (let i = 0; i < coils * 2; i++) {
+        const nx = (i % 2 === 0) ? springX + coilW : springX - coilW;
+        c.lineTo(nx, springTopY + (i + 1) * segH);
+      }
+      c.lineTo(springX, springBotY);
+      c.stroke();
+
+      // Weight block at bottom
+      c.fillStyle = '#e74c3c';
+      c.fillRect(springX - 15, springBotY, 30, 25);
+      c.fillStyle = '#fff';
+      c.font = '10px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('F', springX, springBotY + 16);
+
+      // Stretch indicator
+      if (Math.abs(stretchAmt) > 5) {
+        c.strokeStyle = '#f59e0b';
+        c.lineWidth = 1.5;
+        c.setLineDash([4, 3]);
+        const restBot = springTopY + springRestLen;
+        c.beginPath(); c.moveTo(springX + 25, restBot); c.lineTo(springX + 25, springBotY); c.stroke();
+        c.setLineDash([]);
+        c.fillStyle = '#f59e0b';
+        c.font = '11px sans-serif';
+        c.fillText('x', springX + 35, (restBot + springBotY) / 2 + 4);
+      }
+
+      // === Bouncing ball (right side) - trampoline ===
+      const ballX = cw * 0.72;
+      const bounceH = Math.abs(Math.sin(t * 0.05)) * ch * 0.25;
+      const ballY = ch * 0.7 - bounceH;
+      const ballR = 16;
+
+      // Trampoline base
+      c.fillStyle = '#555';
+      c.fillRect(ballX - 40, ch * 0.72, 80, 6);
+      // Trampoline legs
+      c.strokeStyle = '#777';
+      c.lineWidth = 3;
+      c.beginPath(); c.moveTo(ballX - 35, ch * 0.726); c.lineTo(ballX - 45, ch * 0.8); c.stroke();
+      c.beginPath(); c.moveTo(ballX + 35, ch * 0.726); c.lineTo(ballX + 45, ch * 0.8); c.stroke();
+      // Trampoline surface
+      c.strokeStyle = '#10b981';
+      c.lineWidth = 3;
+      c.beginPath(); c.moveTo(ballX - 38, ch * 0.72); c.quadraticCurveTo(ballX, ch * 0.72 + 4, ballX + 38, ch * 0.72); c.stroke();
+
+      // Ball
+      const ballGrad = c.createRadialGradient(ballX - 4, ballY - 4, 2, ballX, ballY, ballR);
+      ballGrad.addColorStop(0, '#ff9f43');
+      ballGrad.addColorStop(1, '#e74c3c');
+      c.fillStyle = ballGrad;
+      c.beginPath(); c.arc(ballX, ballY, ballR, 0, Math.PI * 2); c.fill();
+
+      // Arrow showing direction
+      if (bounceH > 10) {
+        c.strokeStyle = 'rgba(16, 185, 129, 0.6)';
+        c.lineWidth = 2;
+        c.beginPath(); c.moveTo(ballX, ballY + ballR + 3); c.lineTo(ballX, ballY + ballR + 15); c.stroke();
+        c.beginPath(); c.moveTo(ballX - 4, ballY + ballR + 11); c.lineTo(ballX, ballY + ballR + 15); c.lineTo(ballX + 4, ballY + ballR + 11); c.stroke();
+      }
+
+      // === Robert Hooke silhouette (center) ===
+      const hookeX = cw * 0.5;
+      const hookeY = ch * 0.5;
+      const hookeAlpha = Math.min(1, Math.max(0, (t - 60) / 40));
+      c.globalAlpha = hookeAlpha * 0.15;
+      c.fillStyle = '#10b981';
+      // Head
+      c.beginPath(); c.arc(hookeX, hookeY - 30, 20, 0, Math.PI * 2); c.fill();
+      // Body
+      c.fillRect(hookeX - 12, hookeY - 10, 24, 40);
+      c.globalAlpha = hookeAlpha;
+
+      // Hooke name
+      c.fillStyle = '#10b981';
+      c.font = 'bold 13px sans-serif';
+      c.fillText('罗伯特·胡克', hookeX, hookeY + 30);
+      c.font = '11px sans-serif';
+      c.fillStyle = '#a8d8c8';
+      c.fillText('Robert Hooke', hookeX, hookeY + 45);
+      c.fillText('1635-1703', hookeX, hookeY + 58);
+
+      // === Bottom text ===
+      c.globalAlpha = Math.min(1, Math.max(0, (t - 100) / 40));
+      c.fillStyle = '#d1fae5';
+      c.font = 'bold 16px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('弹力与形变之间，隐藏着怎样的规律？', cw / 2, ch * 0.92);
+
+      c.globalAlpha = 1;
+    };
+
+    const drawHookeDerivation = (c: CanvasRenderingContext2D, cw: number, ch: number, t: number) => {
+      // Background
+      const bg = c.createLinearGradient(0, 0, 0, ch);
+      bg.addColorStop(0, '#0f172a');
+      bg.addColorStop(1, '#1e293b');
+      c.fillStyle = bg;
+      c.fillRect(0, 0, cw, ch);
+
+      c.textAlign = 'center';
+
+      // Title
+      c.fillStyle = '#10b981';
+      c.font = 'bold 16px sans-serif';
+      c.fillText('弹簧实验：弹力与形变的关系', cw / 2, ch * 0.06);
+
+      // === Left: Spring experiment setup ===
+      const expX = cw * 0.28;
+      const supY = ch * 0.14;
+
+      // Support bar
+      c.fillStyle = '#64748b';
+      c.fillRect(expX - 35, supY, 70, 6);
+      c.fillStyle = '#475569';
+      for (let i = 0; i < 6; i++) c.fillRect(expX - 30 + i * 12, supY - 6, 3, 8);
+
+      // Ruler on the side
+      c.strokeStyle = 'rgba(148, 163, 184, 0.3)';
+      c.lineWidth = 1;
+      const rulerX = expX + 30;
+      for (let y = supY + 10; y < ch * 0.82; y += 15) {
+        c.beginPath(); c.moveTo(rulerX, y); c.lineTo(rulerX + 8, y); c.stroke();
+      }
+      c.fillStyle = '#94a3b8';
+      c.font = '8px sans-serif';
+      c.textAlign = 'left';
+      c.fillText('cm', rulerX + 10, supY + 20);
+
+      // Show 3 experiment stages progressively
+      const stages = [
+        { weight: 1, label: '1个钩码', F: 0.5, delay: 30 },
+        { weight: 2, label: '2个钩码', F: 1.0, delay: 90 },
+        { weight: 3, label: '3个钩码', F: 1.5, delay: 150 },
+      ];
+
+      const baseSpringLen = ch * 0.2;
+      const extPerWeight = ch * 0.08;
+
+      // Determine current stage based on time
+      let currentStage = 0;
+      for (let i = 0; i < stages.length; i++) {
+        if (t > stages[i].delay) currentStage = i;
+      }
+
+      // Animate spring for current stage
+      const st = stages[currentStage];
+      const timeSinceStage = t - st.delay;
+      const animProgress = Math.min(1, timeSinceStage / 30);
+      const extension = st.F * extPerWeight / 0.5 * animProgress;
+      const springBot = supY + 6 + baseSpringLen + extension;
+
+      // Draw spring
+      const coils = 8;
+      const coilW = 14;
+      c.strokeStyle = '#10b981';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(expX, supY + 6);
+      const segH = (springBot - supY - 6) / (coils * 2);
+      for (let i = 0; i < coils * 2; i++) {
+        const nx = (i % 2 === 0) ? expX + coilW : expX - coilW;
+        c.lineTo(nx, supY + 6 + (i + 1) * segH);
+      }
+      c.lineTo(expX, springBot);
+      c.stroke();
+
+      // Weight blocks
+      c.textAlign = 'center';
+      for (let w = 0; w < st.weight; w++) {
+        c.fillStyle = '#ef4444';
+        c.fillRect(expX - 12, springBot + w * 14, 24, 12);
+        c.fillStyle = '#fff';
+        c.font = '8px sans-serif';
+        c.fillText('50g', expX, springBot + w * 14 + 9);
+      }
+
+      // Force label
+      c.fillStyle = '#f59e0b';
+      c.font = 'bold 12px sans-serif';
+      c.fillText(`F = ${st.F.toFixed(1)} N`, expX, springBot + st.weight * 14 + 18);
+
+      // Extension label
+      const extCm = (extension / extPerWeight * 2).toFixed(1);
+      c.fillStyle = '#38bdf8';
+      c.font = '11px sans-serif';
+      c.fillText(`x = ${extCm} cm`, expX + 50, supY + baseSpringLen + extension / 2 + 4);
+
+      // === Right: F-x graph ===
+      const graphL = cw * 0.52;
+      const graphR = cw * 0.92;
+      const graphT = ch * 0.15;
+      const graphB = ch * 0.65;
+      const graphW = graphR - graphL;
+      const graphH = graphB - graphT;
+
+      // Graph background
+      c.fillStyle = 'rgba(15, 23, 42, 0.8)';
+      c.fillRect(graphL, graphT, graphW, graphH);
+      c.strokeStyle = '#475569';
+      c.lineWidth = 1;
+      c.strokeRect(graphL, graphT, graphW, graphH);
+
+      // Axes
+      c.strokeStyle = '#94a3b8';
+      c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(graphL, graphB); c.lineTo(graphR, graphB); c.stroke();
+      c.beginPath(); c.moveTo(graphL, graphB); c.lineTo(graphL, graphT); c.stroke();
+
+      // Axis labels
+      c.fillStyle = '#94a3b8';
+      c.font = '10px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('x (形变量)', graphL + graphW / 2, graphB + 18);
+      c.save();
+      c.translate(graphL - 15, graphT + graphH / 2);
+      c.rotate(-Math.PI / 2);
+      c.fillText('F (弹力/N)', 0, 0);
+      c.restore();
+
+      // Axis ticks
+      c.font = '9px sans-serif';
+      const xTicks = ['0', '2', '4', '6'];
+      const yTicks = ['0', '0.5', '1.0', '1.5'];
+      xTicks.forEach((label, i) => {
+        const px = graphL + (i / (xTicks.length - 1)) * graphW;
+        c.fillStyle = '#64748b';
+        c.fillText(label, px, graphB + 10);
+        c.strokeStyle = 'rgba(100, 116, 139, 0.3)';
+        c.beginPath(); c.moveTo(px, graphT); c.lineTo(px, graphB); c.stroke();
+      });
+      yTicks.forEach((label, i) => {
+        const py = graphB - (i / (yTicks.length - 1)) * graphH;
+        c.fillStyle = '#64748b';
+        c.textAlign = 'right';
+        c.fillText(label, graphL - 5, py + 3);
+        c.strokeStyle = 'rgba(100, 116, 139, 0.3)';
+        c.beginPath(); c.moveTo(graphL, py); c.lineTo(graphR, py); c.stroke();
+      });
+      c.textAlign = 'center';
+
+      // Data points and line - plot progressively
+      const dataPoints = [
+        { x: 0, y: 0 },
+        { x: 2, y: 0.5 },
+        { x: 4, y: 1.0 },
+        { x: 6, y: 1.5 },
+      ];
+
+      // How many points to show
+      const pointsToShow = Math.min(dataPoints.length, Math.floor(t / 50) + 1);
+
+      // Draw line through shown points
+      if (pointsToShow >= 2) {
+        c.strokeStyle = '#10b981';
+        c.lineWidth = 2;
+        c.beginPath();
+        for (let i = 0; i < pointsToShow; i++) {
+          const px = graphL + (dataPoints[i].x / 6) * graphW;
+          const py = graphB - (dataPoints[i].y / 1.5) * graphH;
+          if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+        }
+        c.stroke();
+      }
+
+      // Draw data points
+      for (let i = 0; i < pointsToShow; i++) {
+        const px = graphL + (dataPoints[i].x / 6) * graphW;
+        const py = graphB - (dataPoints[i].y / 1.5) * graphH;
+        c.fillStyle = '#10b981';
+        c.beginPath(); c.arc(px, py, 5, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#fff';
+        c.font = '9px sans-serif';
+        c.fillText(`(${dataPoints[i].x}, ${dataPoints[i].y})`, px, py - 10);
+      }
+
+      // Slope label k
+      if (pointsToShow >= 3) {
+        const midX = graphL + (dataPoints[1].x / 6) * graphW + 15;
+        const midY = graphB - (dataPoints[1].y / 1.5) * graphH - 15;
+        c.fillStyle = '#f59e0b';
+        c.font = 'bold 12px sans-serif';
+        c.fillText('斜率 k = 25 N/m', midX + 30, midY);
+      }
+
+      // === Bottom conclusion ===
+      if (t > 180) {
+        const concAlpha = Math.min(1, (t - 180) / 30);
+        c.globalAlpha = concAlpha;
+        c.fillStyle = '#10b981';
+        c.font = 'bold 14px sans-serif';
+        c.textAlign = 'center';
+        c.fillText('在弹性限度内，弹力 F 与形变量 x 成正比', cw / 2, ch * 0.78);
+
+        // Formula box
+        c.fillStyle = 'rgba(16, 185, 129, 0.15)';
+        const fbx = cw / 2 - 60;
+        const fby = ch * 0.82;
+        c.fillRect(fbx, fby, 120, 28);
+        c.strokeStyle = '#10b981';
+        c.lineWidth = 1;
+        c.strokeRect(fbx, fby, 120, 28);
+        c.fillStyle = '#10b981';
+        c.font = 'bold 16px sans-serif';
+        c.fillText('F = kx', cw / 2, fby + 19);
+
+        c.globalAlpha = 1;
+      }
+
+      c.globalAlpha = 1;
+    };
+
+    const drawHookeConclusion = (c: CanvasRenderingContext2D, cw: number, ch: number, t: number) => {
+      // Background
+      const bg = c.createLinearGradient(0, 0, 0, ch);
+      bg.addColorStop(0, '#0f172a');
+      bg.addColorStop(1, '#1e293b');
+      c.fillStyle = bg;
+      c.fillRect(0, 0, cw, ch);
+
+      c.textAlign = 'center';
+
+      // Title
+      c.fillStyle = '#10b981';
+      c.font = 'bold 18px sans-serif';
+      c.fillText('胡克定律', cw / 2, ch * 0.07);
+
+      // Main formula - pulsing glow
+      const pulse = 0.8 + 0.2 * Math.sin(t * 0.05);
+      c.globalAlpha = pulse;
+      c.fillStyle = 'rgba(16, 185, 129, 0.1)';
+      const fbx = cw / 2 - 70;
+      const fby = ch * 0.12;
+      c.fillRect(fbx, fby, 140, 36);
+      c.strokeStyle = '#10b981';
+      c.lineWidth = 2;
+      c.strokeRect(fbx, fby, 140, 36);
+      c.globalAlpha = 1;
+      c.fillStyle = '#10b981';
+      c.font = 'bold 22px sans-serif';
+      c.fillText('F = kx', cw / 2, fby + 26);
+
+      // === Compare two springs with different k ===
+      const spring1X = cw * 0.28;
+      const spring2X = cw * 0.72;
+      const supY = ch * 0.3;
+
+      // Support bars
+      c.fillStyle = '#64748b';
+      c.fillRect(spring1X - 25, supY, 50, 5);
+      c.fillRect(spring2X - 25, supY, 50, 5);
+
+      // Spring 1: soft spring (k=25)
+      const s1Ext = Math.sin(t * 0.03) * 25 + 40;
+      const s1Bot = supY + 5 + ch * 0.15 + s1Ext;
+      const s1Coils = 10;
+      const s1CoilW = 16;
+      c.strokeStyle = '#10b981';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(spring1X, supY + 5);
+      const s1SegH = (s1Bot - supY - 5) / (s1Coils * 2);
+      for (let i = 0; i < s1Coils * 2; i++) {
+        const nx = (i % 2 === 0) ? spring1X + s1CoilW : spring1X - s1CoilW;
+        c.lineTo(nx, supY + 5 + (i + 1) * s1SegH);
+      }
+      c.lineTo(spring1X, s1Bot);
+      c.stroke();
+
+      // Weight on spring 1
+      c.fillStyle = '#ef4444';
+      c.fillRect(spring1X - 12, s1Bot, 24, 20);
+
+      // Spring 1 label
+      c.fillStyle = '#10b981';
+      c.font = 'bold 11px sans-serif';
+      c.fillText('软弹簧', spring1X, supY - 8);
+      c.font = '10px sans-serif';
+      c.fillText('k = 25 N/m', spring1X, s1Bot + 34);
+
+      // Spring 2: stiff spring (k=100)
+      const s2Ext = Math.sin(t * 0.03) * 8 + 12;
+      const s2Bot = supY + 5 + ch * 0.15 + s2Ext;
+      const s2Coils = 6;
+      const s2CoilW = 12;
+      c.strokeStyle = '#f59e0b';
+      c.lineWidth = 3;
+      c.beginPath();
+      c.moveTo(spring2X, supY + 5);
+      const s2SegH = (s2Bot - supY - 5) / (s2Coils * 2);
+      for (let i = 0; i < s2Coils * 2; i++) {
+        const nx = (i % 2 === 0) ? spring2X + s2CoilW : spring2X - s2CoilW;
+        c.lineTo(nx, supY + 5 + (i + 1) * s2SegH);
+      }
+      c.lineTo(spring2X, s2Bot);
+      c.stroke();
+
+      // Weight on spring 2
+      c.fillStyle = '#ef4444';
+      c.fillRect(spring2X - 12, s2Bot, 24, 20);
+
+      // Spring 2 label
+      c.fillStyle = '#f59e0b';
+      c.font = 'bold 11px sans-serif';
+      c.fillText('硬弹簧', spring2X, supY - 8);
+      c.font = '10px sans-serif';
+      c.fillText('k = 100 N/m', spring2X, s2Bot + 34);
+
+      // Comparison arrow & text
+      c.fillStyle = '#94a3b8';
+      c.font = '10px sans-serif';
+      c.fillText('同样拉力，软弹簧伸长多', spring1X, ch * 0.72);
+      c.fillText('同样拉力，硬弹簧伸长少', spring2X, ch * 0.72);
+
+      // === Key points ===
+      const kp1Alpha = Math.min(1, Math.max(0, (t - 60) / 30));
+      const kp2Alpha = Math.min(1, Math.max(0, (t - 100) / 30));
+
+      c.globalAlpha = kp1Alpha;
+      c.fillStyle = 'rgba(16, 185, 129, 0.12)';
+      c.fillRect(cw * 0.08, ch * 0.76, cw * 0.84, ch * 0.07);
+      c.strokeStyle = '#10b981';
+      c.lineWidth = 1;
+      c.strokeRect(cw * 0.08, ch * 0.76, cw * 0.84, ch * 0.07);
+      c.fillStyle = '#d1fae5';
+      c.font = '11px sans-serif';
+      c.fillText('关键点①："弹性限度内"是前提 — 超过则永久形变，F=kx不再适用', cw / 2, ch * 0.76 + 17);
+
+      c.globalAlpha = kp2Alpha;
+      c.fillStyle = 'rgba(245, 158, 11, 0.12)';
+      c.fillRect(cw * 0.08, ch * 0.85, cw * 0.84, ch * 0.07);
+      c.strokeStyle = '#f59e0b';
+      c.lineWidth = 1;
+      c.strokeRect(cw * 0.08, ch * 0.85, cw * 0.84, ch * 0.07);
+      c.fillStyle = '#fef3c7';
+      c.font = '11px sans-serif';
+      c.fillText('关键点②：k由弹簧本身决定（材料、粗细、长度），与F、x无关', cw / 2, ch * 0.85 + 17);
+
+      // Bottom
+      c.globalAlpha = Math.min(1, Math.max(0, (t - 140) / 30));
+      c.fillStyle = '#64748b';
+      c.font = '10px sans-serif';
+      c.fillText('k越大 → 弹簧越硬 → 越难拉伸 | k越小 → 弹簧越软 → 越易拉伸', cw / 2, ch * 0.96);
+
+      c.globalAlpha = 1;
+    };
+
+    const drawHookeApplication = (c: CanvasRenderingContext2D, cw: number, ch: number, t: number) => {
+      // Background - dark tech style
+      const bg = c.createLinearGradient(0, 0, 0, ch);
+      bg.addColorStop(0, '#1a1a2e');
+      bg.addColorStop(1, '#16213e');
+      c.fillStyle = bg;
+      c.fillRect(0, 0, cw, ch);
+
+      // Subtle grid
+      c.strokeStyle = 'rgba(16, 185, 129, 0.05)';
+      c.lineWidth = 1;
+      for (let x = 0; x < cw; x += 25) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, ch); c.stroke(); }
+      for (let y = 0; y < ch; y += 25) { c.beginPath(); c.moveTo(0, y); c.lineTo(cw, y); c.stroke(); }
+
+      c.textAlign = 'center';
+
+      // Title
+      c.fillStyle = '#10b981';
+      c.font = 'bold 14px sans-serif';
+      c.fillText('胡克定律在生活中的应用', cw / 2, ch * 0.05);
+
+      // === App 1: Spring Scale (top-left) ===
+      const scX = cw * 0.18;
+      const scY = ch * 0.12;
+      const scAlpha = Math.min(1, t / 40);
+      c.globalAlpha = scAlpha;
+
+      // Spring scale body
+      c.strokeStyle = '#94a3b8';
+      c.lineWidth = 2;
+      c.strokeRect(scX - 18, scY, 36, ch * 0.35);
+
+      // Spring inside
+      const springPull = Math.sin(t * 0.04) * 10;
+      const spTop = scY + 10;
+      const spBot = scY + ch * 0.15 + springPull;
+      c.strokeStyle = '#10b981';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(scX, spTop);
+      for (let i = 0; i < 8; i++) {
+        const ny = spTop + (i + 1) * ((spBot - spTop) / 16);
+        c.lineTo(scX + (i % 2 === 0 ? 8 : -8), ny);
+      }
+      c.lineTo(scX, spBot);
+      c.stroke();
+
+      // Pointer
+      c.fillStyle = '#ef4444';
+      c.beginPath(); c.moveTo(scX + 10, spBot + 5); c.lineTo(scX + 18, spBot + 2); c.lineTo(scX + 18, spBot + 8); c.closePath(); c.fill();
+
+      // Scale markings
+      c.fillStyle = '#94a3b8';
+      c.font = '8px sans-serif';
+      for (let i = 0; i <= 5; i++) {
+        const my = scY + ch * 0.15 + i * 8;
+        c.fillRect(scX + 14, my, 4, 1);
+      }
+
+      // Hook
+      c.strokeStyle = '#94a3b8';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.arc(scX, scY + ch * 0.35 + 8, 6, 0, Math.PI);
+      c.stroke();
+
+      // Weight
+      c.fillStyle = '#ef4444';
+      c.fillRect(scX - 10, scY + ch * 0.35 + 16, 20, 14);
+
+      c.fillStyle = '#10b981';
+      c.font = 'bold 10px sans-serif';
+      c.fillText('弹簧秤', scX, scY + ch * 0.35 + 42);
+      c.font = '8px sans-serif';
+      c.fillStyle = '#94a3b8';
+      c.fillText('F=kx测力', scX, scY + ch * 0.35 + 53);
+
+      // === App 2: Car Shock Absorber (top-right) ===
+      const carX = cw * 0.5;
+      const carY = ch * 0.1;
+      const bounceOffset = Math.sin(t * 0.06) * 8;
+
+      // Car body
+      c.fillStyle = '#3b82f6';
+      c.beginPath();
+      c.moveTo(carX - 50, carY + 30 + bounceOffset);
+      c.lineTo(carX - 45, carY + bounceOffset);
+      c.lineTo(carX + 45, carY + bounceOffset);
+      c.lineTo(carX + 50, carY + 30 + bounceOffset);
+      c.closePath();
+      c.fill();
+
+      // Windows
+      c.fillStyle = '#93c5fd';
+      c.fillRect(carX - 35, carY + 3 + bounceOffset, 25, 18);
+      c.fillRect(carX + 10, carY + 3 + bounceOffset, 25, 18);
+
+      // Wheels
+      c.fillStyle = '#1e293b';
+      c.beginPath(); c.arc(carX - 30, carY + 35 + bounceOffset, 10, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(carX + 30, carY + 35 + bounceOffset, 10, 0, Math.PI * 2); c.fill();
+
+      // Spring between wheel and body (visible)
+      c.strokeStyle = '#10b981';
+      c.lineWidth = 1.5;
+      const sprLeft = carX - 30;
+      const sprTop = carY + 30 + bounceOffset;
+      const sprBot = carY + 38;
+      c.beginPath();
+      c.moveTo(sprLeft, sprTop);
+      for (let i = 0; i < 4; i++) {
+        c.lineTo(sprLeft + (i % 2 === 0 ? 5 : -5), sprTop + (i + 1) * (sprBot - sprTop) / 8);
+      }
+      c.lineTo(sprLeft, sprBot);
+      c.stroke();
+
+      // Road bump
+      c.fillStyle = '#475569';
+      c.fillRect(carX - 65, carY + 45, 130, 8);
+      c.fillStyle = '#f59e0b';
+      c.fillRect(carX + 10, carY + 40, 15, 5);
+
+      c.fillStyle = '#10b981';
+      c.font = 'bold 10px sans-serif';
+      c.fillText('汽车减震器', carX, carY + 65);
+      c.font = '8px sans-serif';
+      c.fillStyle = '#94a3b8';
+      c.fillText('弹簧缓冲颠簸', carX, carY + 76);
+
+      // === App 3: Slingshot (bottom-left) ===
+      const slX = cw * 0.18;
+      const slY = ch * 0.65;
+
+      // Y-shaped stick
+      c.strokeStyle = '#8B4513';
+      c.lineWidth = 4;
+      c.beginPath(); c.moveTo(slX, slY + 50); c.lineTo(slX, slY + 15); c.stroke();
+      c.beginPath(); c.moveTo(slX, slY + 15); c.lineTo(slX - 18, slY - 10); c.stroke();
+      c.beginPath(); c.moveTo(slX, slY + 15); c.lineTo(slX + 18, slY - 10); c.stroke();
+
+      // Elastic band
+      const pullBack = Math.sin(t * 0.04) * 12 + 8;
+      c.strokeStyle = '#ef4444';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(slX - 18, slY - 10);
+      c.quadraticCurveTo(slX + pullBack, slY, slX + 18, slY - 10);
+      c.stroke();
+
+      // Projectile
+      if (pullBack > 5) {
+        c.fillStyle = '#f59e0b';
+        c.beginPath(); c.arc(slX + pullBack, slY, 4, 0, Math.PI * 2); c.fill();
+      }
+
+      c.fillStyle = '#10b981';
+      c.font = 'bold 10px sans-serif';
+      c.fillText('弹弓/弓箭', slX, slY + 65);
+      c.fillStyle = '#94a3b8';
+      c.font = '8px sans-serif';
+      c.fillText('弹性势能→动能', slX, slY + 76);
+
+      // === App 4: Spring Mattress (bottom-right) ===
+      const mtX = cw * 0.55;
+      const mtY = ch * 0.6;
+      const mtW = cw * 0.35;
+      const mtH = ch * 0.12;
+
+      // Mattress top
+      c.fillStyle = '#e2e8f0';
+      c.fillRect(mtX, mtY, mtW, mtH * 0.4);
+
+      // Springs inside
+      const numSprings = 5;
+      const springPress = Math.sin(t * 0.03) * 3;
+      c.strokeStyle = '#10b981';
+      c.lineWidth = 1.5;
+      for (let i = 0; i < numSprings; i++) {
+        const sx = mtX + (i + 0.5) * (mtW / numSprings);
+        const stopY = mtY + mtH * 0.4 + springPress;
+        const sbotY = mtY + mtH;
+        c.beginPath();
+        c.moveTo(sx, stopY);
+        for (let j = 0; j < 4; j++) {
+          c.lineTo(sx + (j % 2 === 0 ? 5 : -5), stopY + (j + 1) * (sbotY - stopY) / 8);
+        }
+        c.lineTo(sx, sbotY);
+        c.stroke();
+      }
+
+      // Base
+      c.fillStyle = '#64748b';
+      c.fillRect(mtX, mtY + mtH, mtW, 6);
+
+      // Person lying on mattress (simple)
+      c.fillStyle = '#3b82f6';
+      c.beginPath();
+      c.ellipse(mtX + mtW * 0.4, mtY - 3, mtW * 0.25, 6, 0, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = '#fbbf24';
+      c.beginPath(); c.arc(mtX + mtW * 0.15, mtY - 3, 7, 0, Math.PI * 2); c.fill();
+
+      c.fillStyle = '#10b981';
+      c.font = 'bold 10px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('弹簧床垫', mtX + mtW / 2, mtY + mtH + 22);
+      c.fillStyle = '#94a3b8';
+      c.font = '8px sans-serif';
+      c.fillText('弹性提供舒适支撑', mtX + mtW / 2, mtY + mtH + 33);
+
+      // === Bottom formula ===
+      c.fillStyle = '#10b981';
+      c.font = 'bold 12px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('胡克定律 F=kx — 弹性世界的基石', cw / 2, ch * 0.96);
+
+      c.globalAlpha = 1;
+    };
+
+    // ===================== END HOOKE'S LAW ANIMATIONS =====================
 
     const draw = () => {
       // Always advance time so canvas is never blank
@@ -1507,13 +2221,22 @@ function AnimationScene({ type, isPlaying, lawKey }: { type: string; isPlaying: 
       ctx.clearRect(0, 0, w, h);
 
       // Dispatch animation based on lawKey and type
-      if (lawKeyRef.current === 'ohm') {
+      const lk = lawKeyRef.current;
+      if (lk === 'ohm') {
         switch (type) {
           case 'intro': drawOhmIntro(ctx, w, h, timeRef.current); break;
           case 'derivation': drawOhmDerivation(ctx, w, h, timeRef.current); break;
           case 'conclusion': drawOhmConclusion(ctx, w, h, timeRef.current); break;
           case 'application': drawOhmApplication(ctx, w, h, timeRef.current); break;
           default: drawOhmIntro(ctx, w, h, timeRef.current);
+        }
+      } else if (lk === 'hooke') {
+        switch (type) {
+          case 'intro': drawHookeIntro(ctx, w, h, timeRef.current); break;
+          case 'derivation': drawHookeDerivation(ctx, w, h, timeRef.current); break;
+          case 'conclusion': drawHookeConclusion(ctx, w, h, timeRef.current); break;
+          case 'application': drawHookeApplication(ctx, w, h, timeRef.current); break;
+          default: drawHookeIntro(ctx, w, h, timeRef.current);
         }
       } else {
         // Default: Archimedes animations
