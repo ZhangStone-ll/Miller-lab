@@ -52,96 +52,607 @@ function AnimationScene({ type, isPlaying, lawKey }: { type: string; isPlaying: 
     const h = canvas.height;
 
     const drawIntro = (c: CanvasRenderingContext2D, cw: number, ch: number, t: number) => {
-      c.fillStyle = '#e0f2fe';
+      // === 阿基米德浴缸场景 ===
+      // 温暖的古希腊浴室背景
+      const bgGrad = c.createLinearGradient(0, 0, 0, ch);
+      bgGrad.addColorStop(0, '#fef3c7');
+      bgGrad.addColorStop(0.4, '#fde68a');
+      bgGrad.addColorStop(1, '#d4a373');
+      c.fillStyle = bgGrad;
       c.fillRect(0, 0, cw, ch);
 
-      const tubY = ch * 0.55;
-      c.fillStyle = '#f0f9ff';
-      c.strokeStyle = '#93c5fd';
-      c.lineWidth = 3;
-      c.beginPath();
-      c.moveTo(cw * 0.15, tubY);
-      c.quadraticCurveTo(cw * 0.15, ch * 0.85, cw * 0.25, ch * 0.85);
-      c.lineTo(cw * 0.75, ch * 0.85);
-      c.quadraticCurveTo(cw * 0.85, ch * 0.85, cw * 0.85, tubY);
-      c.stroke();
-      c.fill();
+      // 地板纹理
+      c.fillStyle = '#c9a86c';
+      c.fillRect(0, ch * 0.88, cw, ch * 0.12);
+      for (let i = 0; i < 8; i++) {
+        c.strokeStyle = 'rgba(160,120,60,0.3)';
+        c.lineWidth = 1;
+        c.beginPath();
+        c.moveTo(i * cw / 8, ch * 0.88);
+        c.lineTo(i * cw / 8, ch);
+        c.stroke();
+      }
 
-      const waterLevel = Math.min(0.3 + t * 0.01, 0.65);
-      c.fillStyle = 'rgba(59, 130, 246, 0.3)';
-      c.beginPath();
-      c.moveTo(cw * 0.17, tubY + 10);
-      c.quadraticCurveTo(cw * 0.17, ch * (0.55 + waterLevel * 0.3), cw * 0.25, ch * (0.55 + waterLevel * 0.3));
-      c.lineTo(cw * 0.75, ch * (0.55 + waterLevel * 0.3));
-      c.quadraticCurveTo(cw * 0.83, ch * (0.55 + waterLevel * 0.3), cw * 0.83, tubY + 10);
-      c.fill();
-
-      if (t > 30) {
-        for (let i = 0; i < 3; i++) {
-          const dropX = cw * (0.3 + i * 0.15);
-          const dropY = tubY - ((t * 2 + i * 20) % 60);
-          const alpha = Math.max(0, 1 - ((t * 2 + i * 20) % 60) / 60);
-          c.fillStyle = `rgba(59, 130, 246, ${alpha * 0.6})`;
+      // 墙壁装饰 - 古希腊柱子
+      for (const px of [cw * 0.05, cw * 0.95]) {
+        c.fillStyle = '#e8d5b7';
+        c.fillRect(px - 8, ch * 0.05, 16, ch * 0.83);
+        c.fillStyle = '#d4b896';
+        c.fillRect(px - 12, ch * 0.03, 24, 12);
+        c.fillRect(px - 12, ch * 0.85, 24, 12);
+        // 柱子凹槽
+        c.strokeStyle = 'rgba(180,150,100,0.3)';
+        c.lineWidth = 1;
+        for (let gy = ch * 0.08; gy < ch * 0.83; gy += 20) {
           c.beginPath();
-          c.ellipse(dropX, dropY, 4, 6, 0, 0, Math.PI * 2);
-          c.fill();
+          c.moveTo(px - 6, gy);
+          c.lineTo(px + 6, gy);
+          c.stroke();
         }
       }
 
-      const crownX = cw * 0.5 + Math.sin(t * 0.05) * 10;
-      const crownY = ch * 0.25 + Math.sin(t * 0.03) * 5;
-      c.fillStyle = '#fbbf24';
-      c.strokeStyle = '#d97706';
-      c.lineWidth = 2;
+      // 窗户 - 蓝天
+      const winX = cw * 0.78, winY = ch * 0.08, winW = cw * 0.14, winH = ch * 0.18;
+      c.fillStyle = '#7dd3fc';
+      c.fillRect(winX, winY, winW, winH);
+      c.strokeStyle = '#d4b896';
+      c.lineWidth = 3;
+      c.strokeRect(winX, winY, winW, winH);
       c.beginPath();
-      c.moveTo(crownX - 25, crownY + 15);
-      c.lineTo(crownX - 25, crownY - 5);
-      c.lineTo(crownX - 15, crownY + 5);
-      c.lineTo(crownX, crownY - 15);
-      c.lineTo(crownX + 15, crownY + 5);
-      c.lineTo(crownX + 25, crownY - 5);
-      c.lineTo(crownX + 25, crownY + 15);
-      c.closePath();
-      c.fill();
+      c.moveTo(winX + winW / 2, winY);
+      c.lineTo(winX + winW / 2, winY + winH);
+      c.moveTo(winX, winY + winH / 2);
+      c.lineTo(winX + winW, winY + winH / 2);
       c.stroke();
 
-      if (t > 15) {
-        const personAlpha = Math.min(1, (t - 15) / 20);
-        c.globalAlpha = personAlpha;
-        const px = cw * 0.5;
-        const py = ch * 0.3;
+      // === 浴缸 (石制，古希腊风格) ===
+      const tubL = cw * 0.18, tubR = cw * 0.82;
+      const tubTop = ch * 0.42, tubBot = ch * 0.86;
+      const tubMidY = (tubTop + tubBot) / 2;
 
-        c.fillStyle = '#fde68a';
-        c.beginPath();
-        c.arc(px, py - 30, 12, 0, Math.PI * 2);
-        c.fill();
+      // 浴缸阴影
+      c.fillStyle = 'rgba(0,0,0,0.1)';
+      c.beginPath();
+      c.ellipse(cw * 0.5, tubBot + 8, (tubR - tubL) / 2 + 5, 10, 0, 0, Math.PI * 2);
+      c.fill();
 
-        c.strokeStyle = '#d97706';
-        c.lineWidth = 3;
-        c.beginPath();
-        c.moveTo(px, py - 18);
-        c.lineTo(px, py + 5);
-        c.stroke();
-        c.beginPath();
-        c.moveTo(px - 15, py - 8);
-        c.lineTo(px + 15, py - 8);
-        c.stroke();
-        c.beginPath();
-        c.moveTo(px, py + 5);
-        c.lineTo(px - 10, py + 25);
-        c.stroke();
-        c.beginPath();
-        c.moveTo(px, py + 5);
-        c.lineTo(px + 10, py + 25);
-        c.stroke();
+      // 浴缸外壁 - 石头纹理
+      const tubGrad = c.createLinearGradient(0, tubTop, 0, tubBot);
+      tubGrad.addColorStop(0, '#e8ddd0');
+      tubGrad.addColorStop(0.3, '#d4c8b8');
+      tubGrad.addColorStop(1, '#bfb09a');
+      c.fillStyle = tubGrad;
+      c.beginPath();
+      c.moveTo(tubL + 10, tubTop);
+      c.quadraticCurveTo(tubL - 10, tubMidY, tubL + 5, tubBot);
+      c.lineTo(tubR - 5, tubBot);
+      c.quadraticCurveTo(tubR + 10, tubMidY, tubR - 10, tubTop);
+      c.closePath();
+      c.fill();
+      c.strokeStyle = '#a89880';
+      c.lineWidth = 3;
+      c.stroke();
 
-        if (t > 25) {
-          c.fillStyle = '#ef4444';
-          c.font = 'bold 14px sans-serif';
-          c.textAlign = 'center';
-          c.fillText('Eureka!', px, py - 45);
+      // 浴缸顶部边缘
+      c.fillStyle = '#d4c8b8';
+      c.beginPath();
+      c.moveTo(tubL, tubTop - 6);
+      c.quadraticCurveTo(cw * 0.5, tubTop - 14, tubR, tubTop - 6);
+      c.lineTo(tubR, tubTop + 4);
+      c.quadraticCurveTo(cw * 0.5, tubTop - 4, tubL, tubTop + 4);
+      c.closePath();
+      c.fill();
+      c.strokeStyle = '#a89880';
+      c.lineWidth = 2;
+      c.stroke();
+
+      // 浴缸内壁
+      c.fillStyle = '#f5efe6';
+      c.beginPath();
+      c.moveTo(tubL + 14, tubTop + 4);
+      c.quadraticCurveTo(tubL + 4, tubMidY, tubL + 12, tubBot - 6);
+      c.lineTo(tubR - 12, tubBot - 6);
+      c.quadraticCurveTo(tubR - 4, tubMidY, tubR - 14, tubTop + 4);
+      c.closePath();
+      c.fill();
+
+      // === 浴缸中的水 ===
+      // 水面随时间上升，t=0时水位较低，逐渐上升
+      const waterFillT = Math.min(t / 120, 1); // 0~1, 约2秒填满
+      const waterTopBase = tubTop + 15;
+      const waterTopMin = tubTop + 35; // 初始水位较低
+      const waterTopFinal = tubTop + 8; // 最终水位接近缸口
+      const waterTop = waterTopMin + (waterTopFinal - waterTopMin) * waterFillT;
+
+      // 水波纹
+      const waveAmp = 2 + Math.sin(t * 0.08) * 1;
+
+      const waterGrad = c.createLinearGradient(0, waterTop, 0, tubBot - 8);
+      waterGrad.addColorStop(0, 'rgba(96, 165, 250, 0.55)');
+      waterGrad.addColorStop(0.5, 'rgba(59, 130, 246, 0.5)');
+      waterGrad.addColorStop(1, 'rgba(37, 99, 235, 0.6)');
+      c.fillStyle = waterGrad;
+      c.beginPath();
+      c.moveTo(tubL + 14, waterTop);
+      for (let wx = tubL + 14; wx <= tubR - 14; wx += 4) {
+        const wy = waterTop + Math.sin((wx - tubL) * 0.06 + t * 0.06) * waveAmp;
+        c.lineTo(wx, wy);
+      }
+      c.lineTo(tubR - 12, tubBot - 6);
+      c.lineTo(tubL + 12, tubBot - 6);
+      c.closePath();
+      c.fill();
+
+      // 水面高光
+      c.strokeStyle = 'rgba(147, 197, 253, 0.5)';
+      c.lineWidth = 1;
+      c.beginPath();
+      for (let wx = tubL + 20; wx <= tubR - 20; wx += 4) {
+        const wy = waterTop + Math.sin((wx - tubL) * 0.06 + t * 0.06) * waveAmp - 1;
+        if (wx === tubL + 20) c.moveTo(wx, wy); else c.lineTo(wx, wy);
+      }
+      c.stroke();
+
+      // === 水溢出效果 (水位足够高时) ===
+      if (waterFillT > 0.6) {
+        const overflowAlpha = Math.min((waterFillT - 0.6) / 0.3, 0.7);
+        // 溢出的水流沿浴缸外壁流下
+        for (let si = 0; si < 3; si++) {
+          const streamX = tubR - 20 - si * 30;
+          const streamPhase = (t * 0.1 + si * 2) % 4;
+          // 水流
+          c.strokeStyle = `rgba(96, 165, 250, ${overflowAlpha * 0.6})`;
+          c.lineWidth = 2;
+          c.beginPath();
+          c.moveTo(streamX, tubTop + 2);
+          c.quadraticCurveTo(streamX + 3, tubTop + 30 + streamPhase * 15, streamX + 1, tubBot);
+          c.stroke();
+          // 水滴
+          const dropY = tubTop + 10 + ((t * 3 + si * 40) % 80);
+          const dropAlpha = Math.max(0, 1 - ((t * 3 + si * 40) % 80) / 80);
+          c.fillStyle = `rgba(96, 165, 250, ${dropAlpha * overflowAlpha})`;
+          c.beginPath();
+          c.ellipse(streamX + 2, dropY, 3, 5, 0, 0, Math.PI * 2);
+          c.fill();
         }
+        // 地面水洼
+        c.fillStyle = `rgba(96, 165, 250, ${overflowAlpha * 0.2})`;
+        c.beginPath();
+        c.ellipse(cw * 0.6, tubBot + 10, 50, 5, 0, 0, Math.PI * 2);
+        c.fill();
+      }
+
+      // === 躺在浴缸中的阿基米德 ===
+      const archX = cw * 0.45;
+      const archY = waterTop + 5;
+
+      // 身体在水中 - 躺姿
+      // 躯干
+      c.fillStyle = '#deb887';
+      c.beginPath();
+      c.ellipse(archX, archY + 8, 55, 14, -0.08, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = '#c49a6c';
+      c.lineWidth = 1.5;
+      c.stroke();
+
+      // 左臂 (搭在浴缸边)
+      c.fillStyle = '#deb887';
+      c.beginPath();
+      c.moveTo(archX - 50, archY + 2);
+      c.quadraticCurveTo(archX - 65, archY - 15, tubL + 18, tubTop - 2);
+      c.lineWidth = 8;
+      c.strokeStyle = '#deb887';
+      c.stroke();
+      // 手
+      c.beginPath();
+      c.arc(tubL + 16, tubTop - 2, 6, 0, Math.PI * 2);
+      c.fill();
+
+      // 右臂 (在水中或举起来)
+      const rightArmPhase = t > 80 ? Math.min((t - 80) / 20, 1) : 0; // 灵光一现时举起
+      c.strokeStyle = '#deb887';
+      c.lineWidth = 8;
+      c.beginPath();
+      c.moveTo(archX + 45, archY + 2);
+      if (rightArmPhase > 0) {
+        // 举起手臂
+        const armEndX = archX + 55;
+        const armEndY = archY - 50 * rightArmPhase;
+        c.quadraticCurveTo(archX + 60, archY - 20 * rightArmPhase, armEndX, armEndY);
+        c.stroke();
+        // 手
+        c.fillStyle = '#deb887';
+        c.beginPath();
+        c.arc(armEndX, armEndY, 6, 0, Math.PI * 2);
+        c.fill();
+        // 手指张开
+        for (let fi = 0; fi < 5; fi++) {
+          const fAngle = -Math.PI / 2 + (fi - 2) * 0.25;
+          c.strokeStyle = '#deb887';
+          c.lineWidth = 3;
+          c.beginPath();
+          c.moveTo(armEndX + Math.cos(fAngle) * 5, armEndY + Math.sin(fAngle) * 5);
+          c.lineTo(armEndX + Math.cos(fAngle) * 14, armEndY + Math.sin(fAngle) * 14);
+          c.stroke();
+        }
+      } else {
+        c.quadraticCurveTo(archX + 60, archY + 5, archX + 65, archY + 8);
+        c.stroke();
+      }
+
+      // 腿 (在水中，微微弯曲)
+      c.strokeStyle = '#deb887';
+      c.lineWidth = 9;
+      // 左腿
+      c.beginPath();
+      c.moveTo(archX + 42, archY + 10);
+      c.quadraticCurveTo(archX + 60, archY + 14, archX + 70, archY + 8);
+      c.stroke();
+      // 右腿
+      c.beginPath();
+      c.moveTo(archX + 38, archY + 14);
+      c.quadraticCurveTo(archX + 55, archY + 20, archX + 72, archY + 18);
+      c.stroke();
+
+      // === 头部 ===
+      const headX = archX - 58;
+      const headY = archY - 5;
+
+      // 脖子
+      c.fillStyle = '#deb887';
+      c.beginPath();
+      c.moveTo(archX - 48, archY);
+      c.lineTo(archX - 42, archY + 5);
+      c.lineTo(headX + 8, headY + 5);
+      c.lineTo(headX + 5, headY);
+      c.closePath();
+      c.fill();
+
+      // 头
+      c.fillStyle = '#deb887';
+      c.beginPath();
+      c.arc(headX, headY, 16, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = '#c49a6c';
+      c.lineWidth = 1;
+      c.stroke();
+
+      // 头发 - 卷曲古希腊发型
+      c.fillStyle = '#8B6914';
+      for (let hi = 0; hi < 8; hi++) {
+        const hAngle = -Math.PI + hi * 0.35;
+        const hx = headX + Math.cos(hAngle) * 15;
+        const hy = headY + Math.sin(hAngle) * 15 - 3;
+        c.beginPath();
+        c.arc(hx, hy, 5, 0, Math.PI * 2);
+        c.fill();
+      }
+      // 额前卷发
+      c.beginPath();
+      c.arc(headX - 5, headY - 15, 5, 0, Math.PI * 2);
+      c.fill();
+      c.beginPath();
+      c.arc(headX + 4, headY - 16, 4, 0, Math.PI * 2);
+      c.fill();
+
+      // 胡须 (古希腊哲学家)
+      c.fillStyle = '#8B6914';
+      c.beginPath();
+      c.moveTo(headX - 6, headY + 10);
+      c.quadraticCurveTo(headX - 8, headY + 25, headX - 3, headY + 28);
+      c.quadraticCurveTo(headX, headY + 30, headX + 3, headY + 28);
+      c.quadraticCurveTo(headX + 8, headY + 25, headX + 6, headY + 10);
+      c.fill();
+
+      // 表情变化
+      if (t > 80) {
+        // 灵光一现 - 眼睛睁大
+        c.fillStyle = 'white';
+        c.beginPath();
+        c.ellipse(headX - 5, headY - 2, 4, 5, 0, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.ellipse(headX + 5, headY - 2, 4, 5, 0, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = '#2d1810';
+        c.beginPath();
+        c.arc(headX - 5, headY - 2, 2.5, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(headX + 5, headY - 2, 2.5, 0, Math.PI * 2);
+        c.fill();
+        // 眉毛上扬
+        c.strokeStyle = '#8B6914';
+        c.lineWidth = 2;
+        c.beginPath();
+        c.moveTo(headX - 9, headY - 9);
+        c.lineTo(headX - 2, headY - 11);
+        c.stroke();
+        c.beginPath();
+        c.moveTo(headX + 2, headY - 11);
+        c.lineTo(headX + 9, headY - 9);
+        c.stroke();
+        // 嘴巴张开 (惊喜)
+        c.fillStyle = '#c49a6c';
+        c.beginPath();
+        c.ellipse(headX, headY + 7, 4, 3, 0, 0, Math.PI * 2);
+        c.fill();
+      } else if (t > 30) {
+        // 沉思 - 皱眉
+        c.fillStyle = 'white';
+        c.beginPath();
+        c.ellipse(headX - 5, headY - 1, 3, 3.5, 0, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.ellipse(headX + 5, headY - 1, 3, 3.5, 0, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = '#2d1810';
+        c.beginPath();
+        c.arc(headX - 5, headY - 1, 2, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(headX + 5, headY - 1, 2, 0, Math.PI * 2);
+        c.fill();
+        // 皱眉
+        c.strokeStyle = '#8B6914';
+        c.lineWidth = 2;
+        c.beginPath();
+        c.moveTo(headX - 9, headY - 7);
+        c.quadraticCurveTo(headX - 5, headY - 9, headX - 2, headY - 7);
+        c.stroke();
+        c.beginPath();
+        c.moveTo(headX + 2, headY - 7);
+        c.quadraticCurveTo(headX + 5, headY - 9, headX + 9, headY - 7);
+        c.stroke();
+        // 嘴巴抿紧
+        c.strokeStyle = '#c49a6c';
+        c.lineWidth = 1.5;
+        c.beginPath();
+        c.moveTo(headX - 3, headY + 6);
+        c.lineTo(headX + 3, headY + 6);
+        c.stroke();
+      } else {
+        // 闭眼休息
+        c.strokeStyle = '#2d1810';
+        c.lineWidth = 1.5;
+        c.beginPath();
+        c.arc(headX - 5, headY - 1, 3, 0, Math.PI);
+        c.stroke();
+        c.beginPath();
+        c.arc(headX + 5, headY - 1, 3, 0, Math.PI);
+        c.stroke();
+        // 微笑
+        c.strokeStyle = '#c49a6c';
+        c.lineWidth = 1.5;
+        c.beginPath();
+        c.arc(headX, headY + 4, 4, 0.2, Math.PI - 0.2);
+        c.stroke();
+      }
+
+      // === 思考泡泡 (t=30~80) ===
+      if (t > 30 && t < 80) {
+        const bubbleAlpha = Math.min(1, (t - 30) / 15) * (t > 70 ? Math.max(0, 1 - (t - 70) / 10) : 1);
+        c.globalAlpha = bubbleAlpha;
+        // 小圆泡
+        c.fillStyle = 'rgba(255,255,255,0.8)';
+        c.beginPath();
+        c.arc(headX - 15, headY - 25, 4, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(headX - 22, headY - 35, 6, 0, Math.PI * 2);
+        c.fill();
+        // 大思考泡
+        const thbX = headX - 30, thbY = headY - 60;
+        c.beginPath();
+        c.ellipse(thbX, thbY, 40, 25, -0.15, 0, Math.PI * 2);
+        c.fillStyle = 'rgba(255,255,255,0.85)';
+        c.fill();
+        c.strokeStyle = 'rgba(200,200,200,0.5)';
+        c.lineWidth = 1;
+        c.stroke();
+        // 泡内文字
+        c.fillStyle = '#7c3aed';
+        c.font = 'bold 11px sans-serif';
+        c.textAlign = 'center';
+        c.fillText('F浮 = G排 ?', thbX, thbY + 4);
         c.globalAlpha = 1;
+      }
+
+      // === 灵光效果 (t>80) ===
+      if (t > 80) {
+        const eurekaPhase = Math.min((t - 80) / 20, 1);
+        // 头顶灯泡
+        const bulbX = headX - 5, bulbY = headY - 45 - 10 * eurekaPhase;
+        // 光晕
+        const glowR = 25 + Math.sin(t * 0.15) * 5;
+        const glowGrad = c.createRadialGradient(bulbX, bulbY, 5, bulbX, bulbY, glowR);
+        glowGrad.addColorStop(0, 'rgba(251, 191, 36, 0.6)');
+        glowGrad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+        c.fillStyle = glowGrad;
+        c.beginPath();
+        c.arc(bulbX, bulbY, glowR, 0, Math.PI * 2);
+        c.fill();
+        // 灯泡
+        c.fillStyle = '#fef08a';
+        c.beginPath();
+        c.arc(bulbX, bulbY, 10, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = '#eab308';
+        c.lineWidth = 2;
+        c.stroke();
+        // 灯泡底座
+        c.fillStyle = '#9ca3af';
+        c.fillRect(bulbX - 5, bulbY + 8, 10, 6);
+        // 光芒
+        c.strokeStyle = '#fbbf24';
+        c.lineWidth = 2;
+        for (let ri = 0; ri < 8; ri++) {
+          const rAngle = ri * Math.PI / 4 + t * 0.03;
+          const rLen = 16 + Math.sin(t * 0.1 + ri) * 3;
+          c.beginPath();
+          c.moveTo(bulbX + Math.cos(rAngle) * 12, bulbY + Math.sin(rAngle) * 12);
+          c.lineTo(bulbX + Math.cos(rAngle) * rLen, bulbY + Math.sin(rAngle) * rLen);
+          c.stroke();
+        }
+
+        // Eureka 文字 (t>100)
+        if (t > 100) {
+          const textAlpha = Math.min(1, (t - 100) / 15);
+          const textScale = 1 + Math.sin(t * 0.1) * 0.05;
+          c.save();
+          c.translate(cw * 0.5, ch * 0.12);
+          c.scale(textScale, textScale);
+          c.globalAlpha = textAlpha;
+
+          // 文字背景
+          c.fillStyle = 'rgba(239, 68, 68, 0.9)';
+          const txtW = 180, txtH = 44;
+          const txtR = 12;
+          c.beginPath();
+          c.moveTo(-txtW / 2 + txtR, -txtH / 2);
+          c.lineTo(txtW / 2 - txtR, -txtH / 2);
+          c.arcTo(txtW / 2, -txtH / 2, txtW / 2, -txtH / 2 + txtR, txtR);
+          c.lineTo(txtW / 2, txtH / 2 - txtR);
+          c.arcTo(txtW / 2, txtH / 2, txtW / 2 - txtR, txtH / 2, txtR);
+          c.lineTo(-txtW / 2 + txtR, txtH / 2);
+          c.arcTo(-txtW / 2, txtH / 2, -txtW / 2, txtH / 2 - txtR, txtR);
+          c.lineTo(-txtW / 2, -txtH / 2 + txtR);
+          c.arcTo(-txtW / 2, -txtH / 2, -txtW / 2 + txtR, -txtH / 2, txtR);
+          c.fill();
+
+          // 文字
+          c.fillStyle = '#ffffff';
+          c.font = 'bold 28px Georgia, serif';
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
+          c.fillText('Eureka!', 0, 0);
+
+          c.globalAlpha = 1;
+          c.restore();
+
+          // 星星特效
+          for (let si = 0; si < 6; si++) {
+            const starAngle = si * Math.PI / 3 + t * 0.04;
+            const starDist = 110 + Math.sin(t * 0.08 + si) * 15;
+            const sx = cw * 0.5 + Math.cos(starAngle) * starDist;
+            const sy = ch * 0.12 + Math.sin(starAngle) * 30;
+            const starSize = 4 + Math.sin(t * 0.12 + si * 2) * 2;
+            c.fillStyle = `rgba(251, 191, 36, ${0.5 + Math.sin(t * 0.1 + si) * 0.3})`;
+            // 四角星
+            c.beginPath();
+            c.moveTo(sx, sy - starSize);
+            c.lineTo(sx + starSize * 0.3, sy);
+            c.lineTo(sx, sy + starSize);
+            c.lineTo(sx - starSize * 0.3, sy);
+            c.closePath();
+            c.fill();
+            c.beginPath();
+            c.moveTo(sx - starSize, sy);
+            c.lineTo(sx, sy + starSize * 0.3);
+            c.lineTo(sx + starSize, sy);
+            c.lineTo(sx, sy - starSize * 0.3);
+            c.closePath();
+            c.fill();
+          }
+        }
+      }
+
+      // === 浴缸旁边的毛巾和橄榄枝 ===
+      // 毛巾
+      c.fillStyle = '#f0f0f0';
+      c.beginPath();
+      c.moveTo(tubR + 15, tubTop + 20);
+      c.quadraticCurveTo(tubR + 30, tubTop + 30, tubR + 20, tubTop + 60);
+      c.quadraticCurveTo(tubR + 25, tubTop + 75, tubR + 15, tubTop + 70);
+      c.lineTo(tubR + 10, tubTop + 30);
+      c.closePath();
+      c.fill();
+      c.strokeStyle = '#d1d5db';
+      c.lineWidth = 1;
+      c.stroke();
+
+      // 橄榄枝装饰 (古希腊象征)
+      c.strokeStyle = '#6b8e23';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(tubL - 20, tubTop + 10);
+      c.quadraticCurveTo(tubL - 35, tubTop, tubL - 30, tubTop - 20);
+      c.stroke();
+      // 橄榄叶
+      for (let li = 0; li < 4; li++) {
+        const leafT = li / 3;
+        const lx = tubL - 20 - leafT * 12;
+        const ly = tubTop + 10 - leafT * 25;
+        c.fillStyle = '#7cfc00';
+        c.beginPath();
+        c.ellipse(lx + (li % 2 ? 5 : -5), ly, 6, 3, li % 2 ? 0.3 : -0.3, 0, Math.PI * 2);
+        c.fill();
+      }
+
+      // === 水面上的肥皂泡 ===
+      for (let bi = 0; bi < 5; bi++) {
+        const bx = tubL + 30 + bi * (tubR - tubL - 60) / 4 + Math.sin(t * 0.03 + bi * 1.5) * 8;
+        const by = waterTop + Math.sin((bx - tubL) * 0.06 + t * 0.06) * waveAmp - 3 - bi * 2;
+        const br = 4 + bi % 3;
+        c.strokeStyle = `rgba(200, 220, 255, ${0.3 + Math.sin(t * 0.05 + bi) * 0.15})`;
+        c.lineWidth = 1;
+        c.beginPath();
+        c.arc(bx, by, br, 0, Math.PI * 2);
+        c.stroke();
+        // 泡泡高光
+        c.fillStyle = `rgba(255, 255, 255, ${0.2 + Math.sin(t * 0.05 + bi) * 0.1})`;
+        c.beginPath();
+        c.arc(bx - br * 0.3, by - br * 0.3, br * 0.3, 0, Math.PI * 2);
+        c.fill();
+      }
+
+      // === 王冠 (浮在水面上) ===
+      const crownAlpha = t > 20 ? Math.min(1, (t - 20) / 15) : 0;
+      if (crownAlpha > 0) {
+        c.globalAlpha = crownAlpha;
+        const crownX = archX + 50;
+        const crownBaseY = waterTop + Math.sin((crownX - tubL) * 0.06 + t * 0.06) * waveAmp - 2;
+        // 王冠主体
+        c.fillStyle = '#fbbf24';
+        c.beginPath();
+        c.moveTo(crownX - 14, crownBaseY);
+        c.lineTo(crownX - 14, crownBaseY - 12);
+        c.lineTo(crownX - 8, crownBaseY - 5);
+        c.lineTo(crownX, crownBaseY - 18);
+        c.lineTo(crownX + 8, crownBaseY - 5);
+        c.lineTo(crownX + 14, crownBaseY - 12);
+        c.lineTo(crownX + 14, crownBaseY);
+        c.closePath();
+        c.fill();
+        c.strokeStyle = '#d97706';
+        c.lineWidth = 1.5;
+        c.stroke();
+        // 宝石
+        c.fillStyle = '#ef4444';
+        c.beginPath();
+        c.arc(crownX, crownBaseY - 10, 2, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = '#3b82f6';
+        c.beginPath();
+        c.arc(crownX - 7, crownBaseY - 7, 1.5, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.arc(crownX + 7, crownBaseY - 7, 1.5, 0, Math.PI * 2);
+        c.fill();
+        c.globalAlpha = 1;
+      }
+
+      // === 蒸汽效果 ===
+      for (let si = 0; si < 4; si++) {
+        const steamX = tubL + 30 + si * (tubR - tubL - 60) / 3;
+        const steamBaseY = tubTop - 5;
+        const steamY = steamBaseY - ((t * 0.8 + si * 25) % 60);
+        const steamAlpha = Math.max(0, 0.15 - ((t * 0.8 + si * 25) % 60) / 400);
+        c.fillStyle = `rgba(255, 255, 255, ${steamAlpha})`;
+        c.beginPath();
+        c.ellipse(steamX + Math.sin(t * 0.02 + si) * 10, steamY, 15, 8, 0, 0, Math.PI * 2);
+        c.fill();
       }
     };
 
