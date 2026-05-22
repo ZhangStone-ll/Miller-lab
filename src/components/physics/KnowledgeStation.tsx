@@ -2842,32 +2842,65 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
   };
   const ttsCacheRef = useRef<Map<string, string>>(getTTSCache());
 
-  // Load editor data from localStorage and merge
+  // Load editor data: project defaults → localStorage overrides
   useEffect(() => {
-    const stored = localStorage.getItem('physics-editor-data');
-    if (stored) {
+    async function loadEditorData() {
+      // Step 1: Start with chapters from physics-data.ts
+      let merged = chapters.map(ch => ({ ...ch }));
+
+      // Step 2: Apply project config file defaults
       try {
-        const editData = JSON.parse(stored);
-        const edited = editData[lawKey];
-        if (edited && Array.isArray(edited)) {
-          const merged = chapters.map((ch, i) => {
-            if (edited[i]) {
-              return {
-                ...ch,
-                text: edited[i].text ?? ch.text,
-                speech: edited[i].speech ?? ch.speech,
-                videoUrl: edited[i].videoUrl ?? ch.videoUrl,
-                videoName: edited[i].videoName ?? ch.videoName,
-              };
-            }
-            return ch;
-          });
-          setMergedChapters(merged);
+        const res = await fetch('/editor-defaults.json');
+        if (res.ok) {
+          const defaults = await res.json();
+          const lawDefaults = defaults[lawKey];
+          if (lawDefaults && Array.isArray(lawDefaults)) {
+            merged = merged.map((ch, i) => {
+              if (lawDefaults[i]) {
+                return {
+                  ...ch,
+                  text: lawDefaults[i].text ?? ch.text,
+                  speech: lawDefaults[i].speech ?? ch.speech,
+                  videoUrl: lawDefaults[i].videoUrl ?? ch.videoUrl,
+                  videoName: lawDefaults[i].videoName ?? ch.videoName,
+                };
+              }
+              return ch;
+            });
+          }
         }
       } catch {
-        // ignore parse errors, use defaults
+        // ignore fetch errors
       }
+
+      // Step 3: Apply localStorage overrides (user edits take priority)
+      const stored = localStorage.getItem('physics-editor-data');
+      if (stored) {
+        try {
+          const editData = JSON.parse(stored);
+          const edited = editData[lawKey];
+          if (edited && Array.isArray(edited)) {
+            merged = merged.map((ch, i) => {
+              if (edited[i]) {
+                return {
+                  ...ch,
+                  text: edited[i].text ?? ch.text,
+                  speech: edited[i].speech ?? ch.speech,
+                  videoUrl: edited[i].videoUrl ?? ch.videoUrl,
+                  videoName: edited[i].videoName ?? ch.videoName,
+                };
+              }
+              return ch;
+            });
+          }
+        } catch {
+          // ignore parse errors
+        }
+      }
+
+      setMergedChapters(merged);
     }
+    loadEditorData();
   }, [chapters, lawKey]);
 
   const chapter = mergedChapters[currentPage];

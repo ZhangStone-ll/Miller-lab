@@ -35,33 +35,99 @@ export default function EditorPage() {
   const chapter = editData[selectedLaw][selectedChapter];
 
   useEffect(() => {
-    const stored = localStorage.getItem('physics-editor-data');
-    if (stored) {
+    async function loadData() {
+      // Step 1: Load defaults from project config file
+      let defaults: Record<string, EditorChapter[]> = {};
       try {
-        const parsed = JSON.parse(stored);
-        // Clean up invalid blob: URLs that become stale after page refresh
-        // These cause black screen because blob URLs only exist in the creating page session
-        const cleaned: Record<string, unknown> = {};
-        for (const [lawKey, lawData] of Object.entries(parsed)) {
-          const chapters = lawData as EditorChapter[];
-          cleaned[lawKey] = chapters.map((ch: EditorChapter) => {
-            if (ch.videoUrl && ch.videoUrl.startsWith('blob:')) {
-              return { ...ch, videoUrl: undefined, videoName: undefined };
-            }
-            return ch;
-          });
+        const res = await fetch('/editor-defaults.json');
+        if (res.ok) {
+          defaults = await res.json();
         }
-        setEditData(cleaned as Record<LawKey, EditorChapter[]>);
       } catch {
-        // ignore
+        // ignore fetch errors
       }
+
+      // Step 2: Start with defaults merged from physics-data.ts + config file
+      const baseData: Record<LawKey, EditorChapter[]> = {
+        archimedes: archimedesChapters.map(c => ({ ...c })),
+        ohm: ohmChapters.map(c => ({ ...c })),
+        hooke: hookeChapters.map(c => ({ ...c })),
+      };
+      // Apply config file defaults on top
+      for (const [lk, chs] of Object.entries(defaults)) {
+        if (lk in baseData && Array.isArray(chs)) {
+          baseData[lk as LawKey] = chs.map((ch: EditorChapter, i: number) => ({
+            ...baseData[lk as LawKey][i],
+            ...ch,
+          }));
+        }
+      }
+
+      // Step 3: Apply localStorage overrides (user edits take priority)
+      const stored = localStorage.getItem('physics-editor-data');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          const cleaned: Record<string, unknown> = {};
+          for (const [lawKey, lawData] of Object.entries(parsed)) {
+            const chapters = lawData as EditorChapter[];
+            cleaned[lawKey] = chapters.map((ch: EditorChapter) => {
+              if (ch.videoUrl && ch.videoUrl.startsWith('blob:')) {
+                return { ...ch, videoUrl: undefined, videoName: undefined };
+              }
+              return ch;
+            });
+          }
+          // Merge localStorage on top of defaults
+          for (const [lk, chs] of Object.entries(cleaned)) {
+            if (lk in baseData && Array.isArray(chs)) {
+              baseData[lk as LawKey] = chs.map((ch: EditorChapter, i: number) => ({
+                ...baseData[lk as LawKey][i],
+                ...ch,
+              }));
+            }
+          }
+        } catch {
+          // ignore parse errors
+        }
+      }
+
+      setEditData(baseData);
     }
+    loadData();
   }, []);
 
   const handleSave = () => {
     localStorage.setItem('physics-editor-data', JSON.stringify(editData));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleExportConfig = () => {
+    // Export current editor data as a JSON file that can be placed in public/editor-defaults.json
+    // This allows project-level configuration that persists across deployments
+    const exportData: Record<string, unknown> = {};
+    for (const [lk, chs] of Object.entries(editData)) {
+      exportData[lk] = (chs as EditorChapter[]).map(ch => {
+        const entry: Record<string, unknown> = {
+          title: ch.title,
+          text: ch.text,
+          speech: ch.speech,
+          videoType: ch.videoType,
+        };
+        if (ch.videoUrl) entry.videoUrl = ch.videoUrl;
+        if (ch.videoName) entry.videoName = ch.videoName;
+        return entry;
+      });
+    }
+    const json = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'editor-defaults.json';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleTextChange = (value: string) => {
@@ -164,16 +230,24 @@ export default function EditorPage() {
             </Link>
             <h1 className="text-lg font-bold text-gray-800">教学内容编辑器</h1>
           </div>
-          <button
-            onClick={handleSave}
-            className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${
-              saved
-                ? 'bg-green-500 text-white'
-                : `bg-${colorClass}-500 text-white hover:bg-${colorClass}-600`
-            }`}
-          >
-            {saved ? '✅ 已保存' : '💾 保存修改'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportConfig}
+              className="px-4 py-2 rounded-xl text-sm font-medium bg-amber-500 text-white hover:bg-amber-600 transition-all"
+            >
+              📦 导出项目配置
+            </button>
+            <button
+              onClick={handleSave}
+              className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${
+                saved
+                  ? 'bg-green-500 text-white'
+                  : `bg-${colorClass}-500 text-white hover:bg-${colorClass}-600`
+              }`}
+            >
+              {saved ? '✅ 已保存' : '💾 保存修改'}
+            </button>
+          </div>
         </div>
       </header>
 
