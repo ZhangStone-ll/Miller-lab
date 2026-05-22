@@ -33,12 +33,14 @@ const knowledgeCardsData: Record<string, { background: string; derivation: strin
 };
 
 // Animated scene renderer for each chapter type
-function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean }) {
+function AnimationScene({ type, isPlaying, lawKey }: { type: string; isPlaying: boolean; lawKey: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
   const timeRef = useRef(0);
   const isPlayingRef = useRef(isPlaying);
+  const lawKeyRef = useRef(lawKey);
   useEffect(() => { isPlayingRef.current = isPlaying; });
+  useEffect(() => { lawKeyRef.current = lawKey; });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -830,17 +832,698 @@ function AnimationScene({ type, isPlaying }: { type: string; isPlaying: boolean 
       drawFish((cw * 0.8 - T * 15 + cw) % cw, waterLine + ch * 0.1, 6, '#fb923c');
     };
 
+    // ===================== OHM'S LAW ANIMATIONS =====================
+
+    const drawOhmIntro = (c: CanvasRenderingContext2D, cw: number, ch: number, t: number) => {
+      // Dark circuit-board background
+      const bgGrad = c.createLinearGradient(0, 0, 0, ch);
+      bgGrad.addColorStop(0, '#0f172a');
+      bgGrad.addColorStop(1, '#1e293b');
+      c.fillStyle = bgGrad;
+      c.fillRect(0, 0, cw, ch);
+
+      // Circuit board traces
+      c.strokeStyle = 'rgba(245, 158, 11, 0.15)';
+      c.lineWidth = 1;
+      for (let i = 0; i < 8; i++) {
+        const y = ch * 0.1 + i * ch * 0.12;
+        c.beginPath();
+        c.moveTo(0, y);
+        c.lineTo(cw * 0.3, y);
+        c.lineTo(cw * 0.35, y + 10);
+        c.lineTo(cw * 0.6, y + 10);
+        c.stroke();
+      }
+
+      // Light bulb in center (off at start, turns on later)
+      const bulbCX = cw * 0.5;
+      const bulbCY = ch * 0.4;
+      const glowPhase = Math.min(1, Math.max(0, (t - 30) / 40));
+
+      // Wires from bulb
+      c.strokeStyle = '#94a3b8';
+      c.lineWidth = 3;
+      c.beginPath();
+      c.moveTo(bulbCX - 30, bulbCY + 40);
+      c.lineTo(bulbCX - 30, bulbCY + 90);
+      c.lineTo(bulbCX - 80, bulbCY + 90);
+      c.stroke();
+      c.beginPath();
+      c.moveTo(bulbCX + 30, bulbCY + 40);
+      c.lineTo(bulbCX + 30, bulbCY + 90);
+      c.lineTo(bulbCX + 80, bulbCY + 90);
+      c.stroke();
+
+      // Battery symbol on left wire
+      const batX = bulbCX - 80;
+      const batY = bulbCY + 90;
+      c.strokeStyle = '#f59e0b';
+      c.lineWidth = 3;
+      c.beginPath();
+      c.moveTo(batX, batY - 12);
+      c.lineTo(batX, batY + 12);
+      c.stroke();
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(batX - 8, batY - 6);
+      c.lineTo(batX - 8, batY + 6);
+      c.stroke();
+
+      // Switch on right wire
+      const swX = bulbCX + 80;
+      const swY = bulbCY + 90;
+      c.strokeStyle = '#94a3b8';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.arc(swX - 8, swY, 4, 0, Math.PI * 2);
+      c.fill();
+      c.beginPath();
+      c.arc(swX + 8, swY, 4, 0, Math.PI * 2);
+      c.fill();
+      if (t > 20) {
+        // Switch closed
+        c.beginPath();
+        c.moveTo(swX - 8, swY);
+        c.lineTo(swX + 8, swY);
+        c.stroke();
+      } else {
+        c.beginPath();
+        c.moveTo(swX - 8, swY);
+        c.lineTo(swX + 4, swY - 14);
+        c.stroke();
+      }
+
+      // Resistor symbol on top
+      c.strokeStyle = '#94a3b8';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(bulbCX - 80, bulbCY + 90);
+      c.lineTo(bulbCX - 80, ch * 0.15);
+      c.lineTo(bulbCX - 30, ch * 0.15);
+      // zigzag
+      const zigStart = bulbCX - 30;
+      const zigEnd = bulbCX + 30;
+      const zigW = 10;
+      for (let x = zigStart; x < zigEnd; x += zigW) {
+        const dir = ((x - zigStart) / zigW) % 2 === 0 ? -1 : 1;
+        c.lineTo(x + zigW / 2, ch * 0.15 + dir * 8);
+        c.lineTo(x + zigW, ch * 0.15);
+      }
+      c.lineTo(bulbCX + 80, ch * 0.15);
+      c.lineTo(bulbCX + 80, bulbCY + 90);
+      c.stroke();
+
+      // Bulb glass
+      c.fillStyle = `rgba(255, 255, 200, ${0.1 + glowPhase * 0.6})`;
+      c.strokeStyle = '#e2e8f0';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.arc(bulbCX, bulbCY, 30, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+
+      // Bulb filament
+      c.strokeStyle = `rgba(255, ${180 + glowPhase * 75}, ${50 + glowPhase * 100}, ${0.5 + glowPhase * 0.5})`;
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(bulbCX - 8, bulbCY + 15);
+      for (let i = 0; i < 5; i++) {
+        c.lineTo(bulbCX - 8 + i * 4, bulbCY + 15 - (i % 2 === 0 ? 0 : 10));
+      }
+      c.stroke();
+
+      // Glow effect when on
+      if (glowPhase > 0) {
+        const glowGrad = c.createRadialGradient(bulbCX, bulbCY, 5, bulbCX, bulbCY, 60 + glowPhase * 30);
+        glowGrad.addColorStop(0, `rgba(255, 220, 50, ${glowPhase * 0.4})`);
+        glowGrad.addColorStop(1, 'rgba(255, 220, 50, 0)');
+        c.fillStyle = glowGrad;
+        c.beginPath();
+        c.arc(bulbCX, bulbCY, 60 + glowPhase * 30, 0, Math.PI * 2);
+        c.fill();
+      }
+
+      // Bulb base
+      c.fillStyle = '#94a3b8';
+      c.fillRect(bulbCX - 12, bulbCY + 28, 24, 14);
+
+      // Electron particles flowing when circuit is on
+      if (t > 25) {
+        const electronCount = 6;
+        for (let i = 0; i < electronCount; i++) {
+          const phase = (t * 0.03 + i / electronCount) % 1;
+          let ex: number, ey: number;
+          // Simple rectangular path
+          if (phase < 0.25) {
+            ex = bulbCX + 80 - phase * 4 * 160;
+            ey = bulbCY + 90;
+          } else if (phase < 0.5) {
+            ex = bulbCX - 80;
+            ey = bulbCY + 90 - (phase - 0.25) * 4 * (bulbCY + 90 - ch * 0.15);
+          } else if (phase < 0.75) {
+            ex = bulbCX - 80 + (phase - 0.5) * 4 * 160;
+            ey = ch * 0.15;
+          } else {
+            ex = bulbCX + 80;
+            ey = ch * 0.15 + (phase - 0.75) * 4 * (bulbCY + 90 - ch * 0.15);
+          }
+          c.fillStyle = '#38bdf8';
+          c.beginPath();
+          c.arc(ex, ey, 3, 0, Math.PI * 2);
+          c.fill();
+          c.fillStyle = 'rgba(56, 189, 248, 0.3)';
+          c.beginPath();
+          c.arc(ex, ey, 6, 0, Math.PI * 2);
+          c.fill();
+        }
+      }
+
+      // Title text
+      c.fillStyle = '#f59e0b';
+      c.font = 'bold 18px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('欧姆定律', cw / 2, ch * 0.9);
+
+      // Question marks
+      if (t < 30) {
+        c.fillStyle = `rgba(255, 255, 255, ${0.5 + Math.sin(t * 0.1) * 0.3})`;
+        c.font = 'bold 22px sans-serif';
+        c.fillText('I = ?  U = ?  R = ?', cw / 2, ch * 0.97);
+      } else {
+        c.fillStyle = `rgba(245, 158, 11, ${0.5 + Math.sin(t * 0.08) * 0.3})`;
+        c.font = 'bold 16px sans-serif';
+        c.fillText('I = U / R', cw / 2, ch * 0.97);
+      }
+    };
+
+    const drawOhmDerivation = (c: CanvasRenderingContext2D, cw: number, ch: number, t: number) => {
+      const bgGrad = c.createLinearGradient(0, 0, 0, ch);
+      bgGrad.addColorStop(0, '#fffbeb');
+      bgGrad.addColorStop(1, '#fef3c7');
+      c.fillStyle = bgGrad;
+      c.fillRect(0, 0, cw, ch);
+
+      const step = Math.min(Math.floor(t / 80), 4);
+
+      // === Experiment 1: R constant, I ∝ U ===
+      const exp1X = cw * 0.25;
+      const exp1Y = ch * 0.08;
+
+      c.fillStyle = '#92400e';
+      c.font = 'bold 14px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('实验一：R 不变', exp1X, exp1Y + 12);
+
+      // Simple circuit diagram for exp1
+      c.strokeStyle = '#78716c';
+      c.lineWidth = 2;
+
+      // Battery
+      const bx1 = exp1X - 60;
+      const by1 = exp1Y + 30;
+      c.beginPath(); c.moveTo(bx1, by1); c.lineTo(bx1, by1 + 40); c.stroke();
+      c.strokeStyle = '#f59e0b'; c.lineWidth = 3;
+      c.beginPath(); c.moveTo(bx1 - 8, by1 + 40); c.lineTo(bx1 + 8, by1 + 40); c.stroke();
+      c.strokeStyle = '#f59e0b'; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(bx1 - 4, by1 + 46); c.lineTo(bx1 + 4, by1 + 46); c.stroke();
+      c.strokeStyle = '#78716c'; c.lineWidth = 2;
+
+      // Resistor (fixed)
+      const rx1 = exp1X + 30;
+      const ry1 = exp1Y + 30;
+      c.beginPath();
+      c.moveTo(bx1, by1);
+      c.lineTo(rx1 - 20, by1);
+      // zigzag
+      for (let i = 0; i < 6; i++) {
+        c.lineTo(rx1 - 20 + i * 7 + 3.5, by1 + (i % 2 === 0 ? -6 : 6));
+        c.lineTo(rx1 - 20 + (i + 1) * 7, by1);
+      }
+      c.lineTo(rx1 + 30, by1);
+      c.lineTo(rx1 + 30, by1 + 40);
+      c.lineTo(bx1, by1 + 46);
+      c.stroke();
+
+      // R label
+      c.fillStyle = '#dc2626';
+      c.font = 'bold 11px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('R=10Ω', rx1, by1 - 12);
+
+      // Data table for exp1
+      if (step >= 1) {
+        const tableX = exp1X - 70;
+        const tableY = exp1Y + 90;
+        c.fillStyle = '#78350f';
+        c.font = '11px sans-serif';
+        c.textAlign = 'left';
+        c.fillText('U(V)    I(A)', tableX, tableY);
+
+        const data1 = [
+          ['2V', '0.2A'],
+          ['4V', '0.4A'],
+          ['6V', '0.6A'],
+        ];
+        data1.forEach((row, i) => {
+          if (step >= 1 + i * 0.3) {
+            const alpha = Math.min(1, (t - 80 - i * 25) / 20);
+            c.globalAlpha = Math.max(0, alpha);
+            c.fillStyle = '#374151';
+            c.fillText(`${row[0]}      ${row[1]}`, tableX, tableY + 18 + i * 16);
+            c.globalAlpha = 1;
+          }
+        });
+
+        // Arrow showing proportional
+        if (step >= 2) {
+          c.fillStyle = '#16a34a';
+          c.font = 'bold 12px sans-serif';
+          c.textAlign = 'center';
+          c.fillText('I ∝ U ✓', exp1X, tableY + 72);
+        }
+      }
+
+      // === Experiment 2: U constant, I ∝ 1/R ===
+      const exp2X = cw * 0.72;
+      const exp2Y = ch * 0.08;
+
+      c.fillStyle = '#92400e';
+      c.font = 'bold 14px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('实验二：U 不变', exp2X, exp2Y + 12);
+
+      // Simple circuit diagram for exp2
+      c.strokeStyle = '#78716c';
+      c.lineWidth = 2;
+
+      const bx2 = exp2X - 60;
+      const by2 = exp2Y + 30;
+      c.beginPath(); c.moveTo(bx2, by2); c.lineTo(bx2, by2 + 40); c.stroke();
+      c.strokeStyle = '#f59e0b'; c.lineWidth = 3;
+      c.beginPath(); c.moveTo(bx2 - 8, by2 + 40); c.lineTo(bx2 + 8, by2 + 40); c.stroke();
+      c.strokeStyle = '#f59e0b'; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(bx2 - 4, by2 + 46); c.lineTo(bx2 + 4, by2 + 46); c.stroke();
+      c.strokeStyle = '#78716c'; c.lineWidth = 2;
+
+      const rx2 = exp2X + 30;
+      c.beginPath();
+      c.moveTo(bx2, by2);
+      c.lineTo(rx2 - 20, by2);
+      for (let i = 0; i < 6; i++) {
+        c.lineTo(rx2 - 20 + i * 7 + 3.5, by2 + (i % 2 === 0 ? -6 : 6));
+        c.lineTo(rx2 - 20 + (i + 1) * 7, by2);
+      }
+      c.lineTo(rx2 + 30, by2);
+      c.lineTo(rx2 + 30, by2 + 40);
+      c.lineTo(bx2, by2 + 46);
+      c.stroke();
+
+      // R label (variable)
+      c.fillStyle = '#2563eb';
+      c.font = 'bold 11px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('R可变', rx2, by2 - 12);
+
+      // Voltage label
+      c.fillStyle = '#dc2626';
+      c.font = '11px sans-serif';
+      c.fillText('U=6V恒定', exp2X, by2 + 56);
+
+      // Data table for exp2
+      if (step >= 2) {
+        const tableX2 = exp2X - 70;
+        const tableY2 = exp2Y + 90;
+        c.fillStyle = '#78350f';
+        c.font = '11px sans-serif';
+        c.textAlign = 'left';
+        c.fillText('R(Ω)    I(A)', tableX2, tableY2);
+
+        const data2 = [
+          ['5Ω', '1.2A'],
+          ['10Ω', '0.6A'],
+          ['15Ω', '0.4A'],
+        ];
+        data2.forEach((row, i) => {
+          const alpha = Math.min(1, (t - 160 - i * 25) / 20);
+          c.globalAlpha = Math.max(0, alpha);
+          c.fillStyle = '#374151';
+          c.fillText(`${row[0]}      ${row[1]}`, tableX2, tableY2 + 18 + i * 16);
+          c.globalAlpha = 1;
+        });
+
+        if (step >= 3) {
+          c.fillStyle = '#16a34a';
+          c.font = 'bold 12px sans-serif';
+          c.textAlign = 'center';
+          c.fillText('I ∝ 1/R ✓', exp2X, tableY2 + 72);
+        }
+      }
+
+      // === Final Conclusion at bottom ===
+      if (step >= 4) {
+        const alpha = Math.min(1, (t - 320) / 30);
+        c.globalAlpha = Math.max(0, alpha);
+        const pulse = 1 + Math.sin(t * 0.08) * 0.02;
+        c.save();
+        c.translate(cw / 2, ch * 0.92);
+        c.scale(pulse, pulse);
+        c.fillStyle = '#fef3c7';
+        c.beginPath();
+        c.roundRect(-120, -18, 240, 36, 8);
+        c.fill();
+        c.strokeStyle = '#f59e0b';
+        c.lineWidth = 2;
+        c.beginPath();
+        c.roundRect(-120, -18, 240, 36, 8);
+        c.stroke();
+        c.fillStyle = '#92400e';
+        c.font = 'bold 18px sans-serif';
+        c.textAlign = 'center';
+        c.fillText('I = U / R', 0, 7);
+        c.restore();
+        c.globalAlpha = 1;
+      }
+    };
+
+    const drawOhmConclusion = (c: CanvasRenderingContext2D, cw: number, ch: number, t: number) => {
+      const bgGrad = c.createLinearGradient(0, 0, 0, ch);
+      bgGrad.addColorStop(0, '#fffbeb');
+      bgGrad.addColorStop(1, '#fef3c7');
+      c.fillStyle = bgGrad;
+      c.fillRect(0, 0, cw, ch);
+
+      c.fillStyle = '#92400e';
+      c.font = 'bold 18px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('欧姆定律', cw / 2, ch * 0.1);
+
+      // Pulsing formula
+      const pulse = 1 + Math.sin(t * 0.08) * 0.03;
+      c.save();
+      c.translate(cw / 2, ch * 0.28);
+      c.scale(pulse, pulse);
+      c.fillStyle = '#fef3c7';
+      c.beginPath();
+      c.roundRect(-140, -25, 280, 50, 12);
+      c.fill();
+      c.strokeStyle = '#f59e0b';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.roundRect(-140, -25, 280, 50, 12);
+      c.stroke();
+      c.fillStyle = '#78350f';
+      c.font = 'bold 20px sans-serif';
+      c.fillText('I = U / R', 0, 8);
+      c.restore();
+
+      // Triangle diagram: U on top, I bottom-left, R bottom-right
+      const triCX = cw * 0.35;
+      const triCY = ch * 0.6;
+      const triSize = 50;
+
+      c.strokeStyle = '#f59e0b';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(triCX, triCY - triSize);
+      c.lineTo(triCX - triSize, triCY + triSize * 0.6);
+      c.lineTo(triCX + triSize, triCY + triSize * 0.6);
+      c.closePath();
+      c.stroke();
+
+      // Horizontal divider
+      c.beginPath();
+      c.moveTo(triCX - triSize, triCY + triSize * 0.6);
+      c.lineTo(triCX + triSize, triCY + triSize * 0.6);
+      c.stroke();
+
+      // Labels
+      c.fillStyle = '#dc2626';
+      c.font = 'bold 16px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('U', triCX, triCY - triSize - 8);
+      c.fillStyle = '#2563eb';
+      c.fillText('I', triCX - triSize - 12, triCY + triSize * 0.6 + 5);
+      c.fillStyle = '#16a34a';
+      c.fillText('R', triCX + triSize + 12, triCY + triSize * 0.6 + 5);
+
+      // Key points
+      const showIdx = Math.floor(t / 40);
+      const points = [
+        'I、U、R 必须对应同一段电路',
+        '电阻 R 是导体本身的性质',
+        'R 不随 U 或 I 的变化而变化！',
+      ];
+      points.forEach((pt, i) => {
+        if (showIdx > i) {
+          const alpha = Math.min(1, (t - (i + 1) * 40) / 20);
+          c.globalAlpha = alpha;
+          c.fillStyle = '#374151';
+          c.font = '14px sans-serif';
+          c.textAlign = 'left';
+          c.fillText(`• ${pt}`, cw * 0.5, ch * (0.5 + i * 0.12));
+          c.globalAlpha = 1;
+        }
+      });
+
+      // Warning box
+      if (showIdx >= 3) {
+        const warnAlpha = Math.min(1, (t - 120) / 20);
+        c.globalAlpha = warnAlpha;
+        c.fillStyle = '#fef2f2';
+        c.strokeStyle = '#ef4444';
+        c.lineWidth = 2;
+        c.beginPath();
+        c.roundRect(cw * 0.15, ch * 0.82, cw * 0.7, ch * 0.12, 8);
+        c.fill();
+        c.stroke();
+        c.fillStyle = '#dc2626';
+        c.font = 'bold 13px sans-serif';
+        c.textAlign = 'center';
+        c.fillText('⚠ 错误说法："电阻与电压成正比" —— R 由材料、长度、截面积决定！', cw / 2, ch * 0.9);
+        c.globalAlpha = 1;
+      }
+    };
+
+    const drawOhmApplication = (c: CanvasRenderingContext2D, cw: number, ch: number, t: number) => {
+      // Dark tech background
+      const bgGrad = c.createLinearGradient(0, 0, 0, ch);
+      bgGrad.addColorStop(0, '#1e293b');
+      bgGrad.addColorStop(1, '#0f172a');
+      c.fillStyle = bgGrad;
+      c.fillRect(0, 0, cw, ch);
+
+      // Grid lines
+      c.strokeStyle = 'rgba(245, 158, 11, 0.08)';
+      c.lineWidth = 1;
+      for (let x = 0; x < cw; x += 40) {
+        c.beginPath(); c.moveTo(x, 0); c.lineTo(x, ch); c.stroke();
+      }
+      for (let y = 0; y < ch; y += 40) {
+        c.beginPath(); c.moveTo(0, y); c.lineTo(cw, y); c.stroke();
+      }
+
+      // Scene 1: Home circuit (left)
+      const sceneProgress1 = Math.min(1, t / 60);
+      c.globalAlpha = sceneProgress1;
+
+      // House outline
+      const hx = cw * 0.15;
+      const hy = ch * 0.25;
+      c.strokeStyle = '#94a3b8';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(hx, hy + 80);
+      c.lineTo(hx, hy + 20);
+      c.lineTo(hx + 60, hy);
+      c.lineTo(hx + 120, hy + 20);
+      c.lineTo(hx + 120, hy + 80);
+      c.stroke();
+
+      // Light bulb in house
+      const bulbOn = t > 20;
+      c.fillStyle = bulbOn ? 'rgba(255, 220, 50, 0.8)' : 'rgba(100, 100, 100, 0.3)';
+      c.beginPath();
+      c.arc(hx + 60, hy + 45, 12, 0, Math.PI * 2);
+      c.fill();
+      if (bulbOn) {
+        const glow = c.createRadialGradient(hx + 60, hy + 45, 3, hx + 60, hy + 45, 30);
+        glow.addColorStop(0, 'rgba(255, 220, 50, 0.3)');
+        glow.addColorStop(1, 'rgba(255, 220, 50, 0)');
+        c.fillStyle = glow;
+        c.beginPath();
+        c.arc(hx + 60, hy + 45, 30, 0, Math.PI * 2);
+        c.fill();
+      }
+
+      c.fillStyle = '#e2e8f0';
+      c.font = '11px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('家用电路', hx + 60, hy + 100);
+      c.fillStyle = '#f59e0b';
+      c.font = '10px sans-serif';
+      c.fillText('I = P/U 选导线', hx + 60, hy + 115);
+
+      c.globalAlpha = 1;
+
+      // Scene 2: Phone charger (center)
+      const sceneProgress2 = Math.min(1, Math.max(0, (t - 30) / 40));
+      c.globalAlpha = sceneProgress2;
+
+      const px = cw * 0.45;
+      const py = ch * 0.2;
+
+      // Phone body
+      c.fillStyle = '#374151';
+      c.strokeStyle = '#64748b';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.roundRect(px, py, 50, 90, 6);
+      c.fill();
+      c.stroke();
+
+      // Screen
+      c.fillStyle = '#1e40af';
+      c.fillRect(px + 5, py + 10, 40, 60);
+
+      // Charging icon
+      if (t > 40) {
+        c.fillStyle = '#fbbf24';
+        c.font = 'bold 20px sans-serif';
+        c.textAlign = 'center';
+        c.fillText('⚡', px + 25, py + 48);
+      }
+
+      // Charger box below phone
+      c.fillStyle = '#f5f5f5';
+      c.strokeStyle = '#94a3b8';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.roundRect(px + 10, py + 95, 30, 18, 3);
+      c.fill();
+      c.stroke();
+
+      // USB cable
+      c.strokeStyle = '#94a3b8';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(px + 25, py + 90);
+      c.lineTo(px + 25, py + 95);
+      c.stroke();
+
+      c.fillStyle = '#e2e8f0';
+      c.font = '11px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('手机充电器', px + 25, py + 130);
+      c.fillStyle = '#f59e0b';
+      c.font = '10px sans-serif';
+      c.fillText('5V / 2A 输出', px + 25, py + 145);
+
+      c.globalAlpha = 1;
+
+      // Scene 3: LED with resistor (right)
+      const sceneProgress3 = Math.min(1, Math.max(0, (t - 60) / 40));
+      c.globalAlpha = sceneProgress3;
+
+      const lx = cw * 0.75;
+      const ly = ch * 0.2;
+
+      // LED
+      c.fillStyle = '#ef4444';
+      c.beginPath();
+      c.arc(lx + 40, ly + 30, 15, 0, Math.PI * 2);
+      c.fill();
+      if (t > 80) {
+        const ledGlow = c.createRadialGradient(lx + 40, ly + 30, 3, lx + 40, ly + 30, 30);
+        ledGlow.addColorStop(0, 'rgba(239, 68, 68, 0.4)');
+        ledGlow.addColorStop(1, 'rgba(239, 68, 68, 0)');
+        c.fillStyle = ledGlow;
+        c.beginPath();
+        c.arc(lx + 40, ly + 30, 30, 0, Math.PI * 2);
+        c.fill();
+      }
+
+      // Resistor
+      c.strokeStyle = '#94a3b8';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(lx, ly + 30);
+      c.lineTo(lx + 10, ly + 30);
+      for (let i = 0; i < 5; i++) {
+        c.lineTo(lx + 10 + i * 4 + 2, ly + 30 + (i % 2 === 0 ? -5 : 5));
+        c.lineTo(lx + 10 + (i + 1) * 4, ly + 30);
+      }
+      c.lineTo(lx + 35, ly + 30);
+      c.stroke();
+
+      // Connection
+      c.strokeStyle = '#64748b';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(lx, ly + 30);
+      c.lineTo(lx, ly + 70);
+      c.lineTo(lx + 40, ly + 70);
+      c.lineTo(lx + 40, ly + 45);
+      c.stroke();
+
+      c.fillStyle = '#e2e8f0';
+      c.font = '11px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('LED限流电阻', lx + 20, ly + 90);
+      c.fillStyle = '#f59e0b';
+      c.font = '10px sans-serif';
+      c.fillText('R = U/I 防烧毁', lx + 20, ly + 105);
+
+      c.globalAlpha = 1;
+
+      // Bottom: flowing electrons
+      if (t > 20) {
+        for (let i = 0; i < 10; i++) {
+          const phase = (t * 0.02 + i / 10) % 1;
+          const ex = phase * cw;
+          const ey = ch * 0.85 + Math.sin(phase * 6 + t * 0.05) * 8;
+          c.fillStyle = '#38bdf8';
+          c.beginPath();
+          c.arc(ex, ey, 2.5, 0, Math.PI * 2);
+          c.fill();
+          c.fillStyle = 'rgba(56, 189, 248, 0.2)';
+          c.beginPath();
+          c.arc(ex, ey, 6, 0, Math.PI * 2);
+          c.fill();
+        }
+      }
+
+      // Bottom text
+      c.fillStyle = '#f59e0b';
+      c.font = 'bold 14px sans-serif';
+      c.textAlign = 'center';
+      c.fillText('欧姆定律：理解用电安全的基石', cw / 2, ch * 0.96);
+    };
+
+    // ===================== END OHM'S LAW ANIMATIONS =====================
+
     const draw = () => {
       // Always advance time so canvas is never blank
       timeRef.current += 1;
       ctx.clearRect(0, 0, w, h);
 
-      switch (type) {
-        case 'intro': drawIntro(ctx, w, h, timeRef.current); break;
-        case 'derivation': drawDerivation(ctx, w, h, timeRef.current); break;
-        case 'conclusion': drawConclusion(ctx, w, h, timeRef.current); break;
-        case 'application': drawApplication(ctx, w, h, timeRef.current); break;
-        default: drawIntro(ctx, w, h, timeRef.current);
+      // Dispatch animation based on lawKey and type
+      if (lawKeyRef.current === 'ohm') {
+        switch (type) {
+          case 'intro': drawOhmIntro(ctx, w, h, timeRef.current); break;
+          case 'derivation': drawOhmDerivation(ctx, w, h, timeRef.current); break;
+          case 'conclusion': drawOhmConclusion(ctx, w, h, timeRef.current); break;
+          case 'application': drawOhmApplication(ctx, w, h, timeRef.current); break;
+          default: drawOhmIntro(ctx, w, h, timeRef.current);
+        }
+      } else {
+        // Default: Archimedes animations
+        switch (type) {
+          case 'intro': drawIntro(ctx, w, h, timeRef.current); break;
+          case 'derivation': drawDerivation(ctx, w, h, timeRef.current); break;
+          case 'conclusion': drawConclusion(ctx, w, h, timeRef.current); break;
+          case 'application': drawApplication(ctx, w, h, timeRef.current); break;
+          default: drawIntro(ctx, w, h, timeRef.current);
+        }
       }
 
       animFrameRef.current = requestAnimationFrame(draw);
@@ -1233,7 +1916,7 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
               </div>
             )
           ) : (
-            <AnimationScene key={`anim-${currentPage}`} type={chapter.videoType} isPlaying={isPlaying} />
+            <AnimationScene key={`anim-${currentPage}`} type={chapter.videoType} isPlaying={isPlaying} lawKey={lawKey} />
           )}
         </div>
 
