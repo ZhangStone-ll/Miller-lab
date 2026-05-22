@@ -1,363 +1,180 @@
-# projects
+# 中学物理实验室 — 互动学习平台
 
-这是一个基于 [Next.js 16](https://nextjs.org) + [shadcn/ui](https://ui.shadcn.com) 的全栈应用项目，由扣子编程 CLI 创建。
+## 一、功能简介
 
-## 快速开始
+基于阿基米德定律、欧姆定律和胡克定律三大中学物理定律的互动学习平台，集知识讲解、虚拟实验与闯关于一体，配备AI助教智能体，让学生在沉浸式操作中掌握物理规律。
 
-### 启动开发服务器
+---
 
-```bash
-coze dev
-```
+## 二、详细功能介绍
 
-启动后，在浏览器中打开 [http://localhost:5000](http://localhost:5000) 查看应用。
+### 2.1 首页
 
-开发服务器支持热更新，修改代码后页面会自动刷新。
+- 展示3个物理定律入口卡片（阿基米德定律、欧姆定律、胡克定律），各有专属主题色
+- 每个卡片显示定律名称、副标题、核心公式和简介
+- 漂浮气泡动画装饰，蓝色渐变清爽背景
+- 右下角悬浮AI助教"小物"图标
 
-### 构建生产版本
+### 2.2 AI助教智能体
 
-```bash
-coze build
-```
+- 悬浮圆形卡通图标，鼠标悬停显示介绍文字
+- 点击打开对话框，支持流式对话（SSE实时输出）
+- 能且仅能回答中学物理范围内的知识问题，超出范围礼貌拒绝
+- 回答风格：中学高级教师身份，简洁扼要，善用生活实例类比
+- 自动保存最近7天的对话历史到浏览器本地存储
 
-### 启动生产服务器
+### 2.3 知识加油站（每个定律均有）
 
-```bash
-coze start
-```
+- 4页翻页式内容，对应4个章节：问题引入 → 定律推导 → 定律结论 → 生活应用
+- 每页包含：Canvas演示动画 + 文字内容 + TTS语音播报
+- 语音播报采用AI大模型TTS合成（大易男声，自然人声），支持自动翻页连续播放
+- 已播放语音自动缓存到本地，重复播放无需重新请求
+- 翻页按钮和播放/暂停按钮控制
+- 进度条与语音播放进度同步
+- 支持4个知识卡片（定律背景、推导过程、结论、应用）
 
-## 项目结构
+**各定律专属演示动画：**
 
-```
-src/
-├── app/                      # Next.js App Router 目录
-│   ├── layout.tsx           # 根布局组件
-│   ├── page.tsx             # 首页
-│   ├── globals.css          # 全局样式（包含 shadcn 主题变量）
-│   └── [route]/             # 其他路由页面
-├── components/              # React 组件目录
-│   └── ui/                  # shadcn/ui 基础组件（优先使用）
-│       ├── button.tsx
-│       ├── card.tsx
-│       └── ...
-├── lib/                     # 工具函数库
-│   └── utils.ts            # cn() 等工具函数
-└── hooks/                   # 自定义 React Hooks（可选）
-
-server/
-├── index.ts                 # 自定义服务器入口
-├── tsconfig.json           # Server TypeScript 配置
-└── dist/                    # 编译输出目录（自动生成）
-```
+| 定律 | 问题引入 | 定律推导 | 定律结论 | 生活应用 |
+|------|----------|----------|----------|----------|
+| 阿基米德 | 古希腊浴缸沉思Eureka场景 | 柱体浸没+上下表面压力F上/F下推导 | 公式+关键点 | 轮船/潜水艇/氢气球海洋写实场景 |
+| 欧姆 | 电路板+灯泡电路点亮动画 | 双实验控制变量+数据图表 | 三角形记忆图+易错点 | 家用电路/充电器/LED限流电阻 |
+| 胡克 | 弹簧伸缩+蹦床弹球+胡克剪影 | 弹簧挂钩码实验+F-x坐标图 | 软硬弹簧对比+关键点 | 弹簧秤/减震器/弹弓/床垫 |
 
-## 核心开发规范
-
-### 1. 组件开发
+### 2.4 虚拟实验室
 
-**优先使用 shadcn/ui 基础组件**
-
-本项目已预装完整的 shadcn/ui 组件库，位于 `src/components/ui/` 目录。开发时应优先使用这些组件作为基础：
-
-```tsx
-// ✅ 推荐：使用 shadcn 基础组件
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+#### 阿基米德虚拟实验室 — 溢水杯实验
 
-export default function MyComponent() {
-  return (
-    <Card>
-      <CardHeader>标题</CardHeader>
-      <CardContent>
-        <Input placeholder="输入内容" />
-        <Button>提交</Button>
-      </CardContent>
-    </Card>
-  );
-}
-```
+- 溢水杯水位在溢水口，溢水口下有量杯（带体积刻度）放在电子秤上
+- 溢水杯旁有铁块，上方有弹簧拉力计
+- 拖拽铁块挂到拉力计上 → 显示铁块重量G
+- 向下滑动拉力计 → 铁块浸入水中，水溢出流入量杯
+- 实时显示：拉力计示数F、电子秤示数G水、量杯溢出水体积
+- 水面稳定0.5秒后自动计算浮力(G-F)和排水重力，蓝色高亮+放大动画
+- 实验数据表格7列：物体重力G、拉力F、浮力(G-F)、排水重力G水、排水体积V排、ρ液gV排、结论
+- 可重复实验记录多组数据
 
-**可用的 shadcn 组件清单**
+#### 欧姆虚拟实验室 — 两个对照实验
 
-- 表单：`button`, `input`, `textarea`, `select`, `checkbox`, `radio-group`, `switch`, `slider`
-- 布局：`card`, `separator`, `tabs`, `accordion`, `collapsible`, `scroll-area`
-- 反馈：`alert`, `alert-dialog`, `dialog`, `toast`, `sonner`, `progress`
-- 导航：`dropdown-menu`, `menubar`, `navigation-menu`, `context-menu`
-- 数据展示：`table`, `avatar`, `badge`, `hover-card`, `tooltip`, `popover`
-- 其他：`calendar`, `command`, `carousel`, `resizable`, `sidebar`
+- **实验一（电阻固定）**：调节滑动变阻器改变电压，观察电流变化，验证I∝U
+- **实验二（电压固定）**：更换定值电阻并调节变阻器保持电压不变，验证I∝1/R
+- Canvas绘制完整电路图（电源、开关、滑动变阻器、定值电阻、电流表、电压表）
+- 点击开关切换闭合状态，点击滑动变阻器调节阻值
+- 电子流动动画，速度与电流大小成正比
+- 自动记录实验数据，达到3组数据后可完成实验并显示结论
 
-详见 `src/components/ui/` 目录下的具体组件实现。
+#### 胡克虚拟实验室
 
-### 2. 路由开发
+- 弹簧挂钩码实验，拖拽钩码观察弹簧形变
+- 实时显示弹力与形变量的关系
 
-Next.js 使用文件系统路由，在 `src/app/` 目录下创建文件夹即可添加路由：
+### 2.5 闯关游戏
 
-```bash
-# 创建新路由 /about
-src/app/about/page.tsx
+#### 阿基米德闯关游戏（3个）
 
-# 创建动态路由 /posts/[id]
-src/app/posts/[id]/page.tsx
+1. **浮力参数调节器**：通过滑块调节液体密度ρ液和物体浸入深度，使浮力达到目标值，3关递进
+2. **深海沉船救援大作战**：选择不同大小的浮力气囊加装到沉船上，增大V排提升浮力，将沉船打捞至海面
+3. **浮沉盲盒猜猜猜**：根据给定的G、F浮、V排等数据，推理盲盒的浮沉状态（漂浮/悬浮/沉底），5道题闯关
 
-# 创建路由组（不影响 URL）
-src/app/(marketing)/about/page.tsx
+#### 欧姆闯关游戏（2个）
 
-# 创建 API 路由
-src/app/api/users/route.ts
-```
+1. **电子跑酷（电压攀登者）**：2D横版跑酷，蓄力控制电压→电子冲刺速度，撞碎/绕过不同阻值的电阻门，3个递增难度关卡
+2. **电压塔防**：在怪物路径旁放置电击塔（铜线塔R=2Ω/铁丝塔R=5Ω/碳棒塔R=10Ω），调节全局电压控制伤害，10波次+Boss战，超载机制
 
-**页面组件示例**
+### 2.6 教学内容编辑器
 
-```tsx
-// src/app/about/page.tsx
-import { Button } from '@/components/ui/button';
+- 支持编辑3个定律×4章节的内容
+- 可编辑项：显示的文字内容、语音播报文案、上传视频/图片
+- 上传的视频自动转base64存储，确保刷新后仍可预览
+- 编辑内容实时同步到知识加油站
+- 本地存储（localStorage）持久化保存
 
-export const metadata = {
-  title: '关于我们',
-  description: '关于页面描述',
-};
-
-export default function AboutPage() {
-  return (
-    <div>
-      <h1>关于我们</h1>
-      <Button>了解更多</Button>
-    </div>
-  );
-}
-```
+---
 
-**动态路由示例**
+## 三、功能使用方法
 
-```tsx
-// src/app/posts/[id]/page.tsx
-export default async function PostPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-
-  return <div>文章 ID: {id}</div>;
-}
-```
-
-**API 路由示例**
-
-```tsx
-// src/app/api/users/route.ts
-import { NextResponse } from 'next/server';
-
-export async function GET() {
-  return NextResponse.json({ users: [] });
-}
-
-export async function POST(request: Request) {
-  const body = await request.json();
-  return NextResponse.json({ success: true });
-}
-```
-
-### 3. 依赖管理
-
-**必须使用 pnpm 管理依赖**
-
-```bash
-# ✅ 安装依赖
-pnpm install
-
-# ✅ 添加新依赖
-pnpm add package-name
-
-# ✅ 添加开发依赖
-pnpm add -D package-name
-
-# ❌ 禁止使用 npm 或 yarn
-# npm install  # 错误！
-# yarn add     # 错误！
-```
-
-项目已配置 `preinstall` 脚本，使用其他包管理器会报错。
-
-### 4. 样式开发
-
-**使用 Tailwind CSS v4**
-
-本项目使用 Tailwind CSS v4 进行样式开发，并已配置 shadcn 主题变量。
-
-```tsx
-// 使用 Tailwind 类名
-<div className="flex items-center gap-4 p-4 rounded-lg bg-background">
-  <Button className="bg-primary text-primary-foreground">
-    主要按钮
-  </Button>
-</div>
-
-// 使用 cn() 工具函数合并类名
-import { cn } from '@/lib/utils';
-
-<div className={cn(
-  "base-class",
-  condition && "conditional-class",
-  className
-)}>
-  内容
-</div>
-```
-
-**主题变量**
-
-主题变量定义在 `src/app/globals.css` 中，支持亮色/暗色模式：
-
-- `--background`, `--foreground`
-- `--primary`, `--primary-foreground`
-- `--secondary`, `--secondary-foreground`
-- `--muted`, `--muted-foreground`
-- `--accent`, `--accent-foreground`
-- `--destructive`, `--destructive-foreground`
-- `--border`, `--input`, `--ring`
-
-### 5. 表单开发
+### 3.1 首页导航
 
-推荐使用 `react-hook-form` + `zod` 进行表单开发：
-
-```tsx
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-
-const formSchema = z.object({
-  username: z.string().min(2, '用户名至少 2 个字符'),
-  email: z.string().email('请输入有效的邮箱'),
-});
-
-export default function MyForm() {
-  const form = useForm({
-    resolver: zodResolver(formSchema),
-    defaultValues: { username: '', email: '' },
-  });
+1. 打开网页后进入首页，看到3个定律卡片
+2. 点击任意定律卡片进入对应定律页面
+3. 右下角"小物"图标为AI助教，悬停查看介绍，点击打开对话
 
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
-    console.log(data);
-  };
-
-  return (
-    <form onSubmit={form.handleSubmit(onSubmit)}>
-      <Input {...form.register('username')} />
-      <Input {...form.register('email')} />
-      <Button type="submit">提交</Button>
-    </form>
-  );
-}
-```
-
-### 6. 数据获取
-
-**服务端组件（推荐）**
-
-```tsx
-// src/app/posts/page.tsx
-async function getPosts() {
-  const res = await fetch('https://api.example.com/posts', {
-    cache: 'no-store', // 或 'force-cache'
-  });
-  return res.json();
-}
-
-export default async function PostsPage() {
-  const posts = await getPosts();
-
-  return (
-    <div>
-      {posts.map(post => (
-        <div key={post.id}>{post.title}</div>
-      ))}
-    </div>
-  );
-}
-```
-
-**客户端组件**
-
-```tsx
-'use client';
-
-import { useEffect, useState } from 'react';
-
-export default function ClientComponent() {
-  const [data, setData] = useState(null);
-
-  useEffect(() => {
-    fetch('/api/data')
-      .then(res => res.json())
-      .then(setData);
-  }, []);
-
-  return <div>{JSON.stringify(data)}</div>;
-}
-```
-
-## 常见开发场景
-
-### 添加新页面
-
-1. 在 `src/app/` 下创建文件夹和 `page.tsx`
-2. 使用 shadcn 组件构建 UI
-3. 根据需要添加 `layout.tsx` 和 `loading.tsx`
-
-### 创建业务组件
-
-1. 在 `src/components/` 下创建组件文件（非 UI 组件）
-2. 优先组合使用 `src/components/ui/` 中的基础组件
-3. 使用 TypeScript 定义 Props 类型
-
-### 添加全局状态
-
-推荐使用 React Context 或 Zustand：
-
-```tsx
-// src/lib/store.ts
-import { create } from 'zustand';
-
-interface Store {
-  count: number;
-  increment: () => void;
-}
-
-export const useStore = create<Store>((set) => ({
-  count: 0,
-  increment: () => set((state) => ({ count: state.count + 1 })),
-}));
-```
-
-### 集成数据库
-
-推荐使用 Prisma 或 Drizzle ORM，在 `src/lib/db.ts` 中配置。
-
-## 技术栈
-
-- **框架**: Next.js 16.1.1 (App Router)
-- **UI 组件**: shadcn/ui (基于 Radix UI)
-- **样式**: Tailwind CSS v4
-- **表单**: React Hook Form + Zod
-- **图标**: Lucide React
-- **字体**: Geist Sans & Geist Mono
-- **包管理器**: pnpm 9+
-- **TypeScript**: 5.x
-
-## 参考文档
-
-- [Next.js 官方文档](https://nextjs.org/docs)
-- [shadcn/ui 组件文档](https://ui.shadcn.com)
-- [Tailwind CSS 文档](https://tailwindcss.com/docs)
-- [React Hook Form](https://react-hook-form.com)
-
-## 重要提示
-
-1. **必须使用 pnpm** 作为包管理器
-2. **优先使用 shadcn/ui 组件** 而不是从零开发基础组件
-3. **遵循 Next.js App Router 规范**，正确区分服务端/客户端组件
-4. **使用 TypeScript** 进行类型安全开发
-5. **使用 `@/` 路径别名** 导入模块（已配置）
+### 3.2 AI助教使用
+
+1. 点击右下角圆形"小物"图标，打开对话框
+2. 在输入框输入物理问题，按回车或点击发送
+3. AI会以中学物理教师身份流式回答，实时显示回复内容
+4. 关闭对话框后，对话历史自动保存7天
+5. 再次打开可查看历史记录继续对话
+
+### 3.3 知识加油站
+
+1. 进入定律页面后，默认显示"知识加油站"Tab
+2. 页面自动播放当前章节的演示动画和语音播报
+3. 使用底部"上一页"/"下一页"按钮手动翻页
+4. 点击中间的播放/暂停按钮控制语音播报
+5. 进度条显示当前语音播放进度
+6. 查看下方4个知识卡片了解核心要点
+
+### 3.4 阿基米德虚拟实验室
+
+1. 切换到"虚拟实验室"Tab
+2. **步骤1**：点击并拖拽铁块到拉力计上，松手后铁块挂上拉力计，显示重量G
+3. **步骤2**：拖拽拉力计右侧的滑块（或使用下方滑块控件）向下移动，铁块浸入水中
+4. 观察水流溢出到量杯、拉力计示数变小、电子秤示数增大
+5. 水面稳定后，自动显示浮力和排水重力的计算结果（蓝色高亮动画）
+6. 数据自动记录到下方表格
+7. 可将滑块上移取出铁块，再重复实验获取多组数据
+
+### 3.5 欧姆虚拟实验室
+
+1. 切换到"虚拟实验室"Tab，默认进入实验一
+2. **实验一**：
+   - 点击电路图中的开关S闭合电路
+   - 点击滑动变阻器区域调节滑块位置，改变电压
+   - 每次调节后自动记录电压和电流数据
+   - 至少3组数据后点击"完成实验"查看结论
+3. **实验二**：
+   - 切换到实验二
+   - 闭合开关后更换不同阻值的定值电阻
+   - 调节滑动变阻器使电压表读数与上次相同
+   - 记录数据后完成实验
+
+### 3.6 闯关游戏
+
+#### 阿基米德游戏
+
+1. 切换到"闯关游戏"Tab，选择游戏
+2. **浮力参数调节器**：拖动两个滑块调节参数，满足关卡目标即通关
+3. **深海沉船救援**：点击气囊按钮加装气囊，浮力超过重力后沉船自动上浮
+4. **浮沉盲盒**：根据数据面板的G、F浮、V排判断盲盒浮沉状态
+
+#### 欧姆游戏
+
+1. 切换到"闯关游戏"Tab，选择游戏
+2. **电子跑酷**：按住鼠标蓄力，松开发射电子，空中点击二段跳，通过3关
+3. **电压塔防**：点击画布放置电击塔，底部滑块调节电压，抵御10波怪物
+
+### 3.7 教学内容编辑器
+
+1. 点击首页右上角"教学内容编辑"按钮
+2. 选择要编辑的定律和章节
+3. 修改"显示文字内容"或"语音播报文案"
+4. 点击"上传视频/图片"按钮选择本地文件，上传后自动预览
+5. 点击"保存"按钮保存修改，内容立即同步到知识加油站
+6. 修改语音文案后，下次播放会重新生成TTS语音
+
+---
+
+## 四、注意事项
+
+1. **浏览器要求**：推荐使用 Chrome、Edge 等现代浏览器，需支持 Canvas、Web Audio API
+2. **语音播报**：首次播放某段语音需要调用TTS接口生成，可能等待1~3秒；生成后自动缓存，重复播放即时响应
+3. **视频上传**：上传的视频文件会转为base64存储在浏览器本地，大文件可能导致存储空间不足。建议单个视频不超过5MB
+4. **localStorage限制**：浏览器localStorage通常限制5MB，频繁上传大视频可能超出配额导致保存失败。如遇到"exceeded the quota"错误，请清理浏览器数据或减少上传视频大小
+5. **AI助教范围**：AI助教仅回答中学物理教材教纲范围内的问题，其他问题会被礼貌拒绝
+6. **实验数据精度**：虚拟实验室中的数值计算保留2位小数，以教学演示为目的，不适用于高精度物理计算
+7. **游戏操作**：电子跑酷游戏建议使用鼠标操作（蓄力+发射+二段跳）；电压塔防游戏支持点击画布放置塔
+8. **数据持久化**：所有编辑内容、对话历史、TTS缓存均保存在浏览器本地，清除浏览器数据后需要重新配置
+9. **跨设备同步**：当前版本不支持跨设备数据同步，编辑内容仅在本机浏览器生效
+10. **性能建议**：知识加油站的Canvas动画和游戏同时运行时，低性能设备可能出现卡顿，建议关闭不需要的动画页面
