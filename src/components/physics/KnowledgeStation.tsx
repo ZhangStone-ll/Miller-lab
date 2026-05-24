@@ -2842,15 +2842,15 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
   };
   const ttsCacheRef = useRef<Map<string, string>>(getTTSCache());
 
-  // Load editor data: project defaults → localStorage overrides
+  // Load editor data from server config (editor-defaults.json via API)
   useEffect(() => {
     async function loadEditorData() {
       // Step 1: Start with chapters from physics-data.ts
       let merged = chapters.map(ch => ({ ...ch }));
 
-      // Step 2: Apply project config file defaults
+      // Step 2: Load project config from server API
       try {
-        const res = await fetch('/editor-defaults.json');
+        const res = await fetch('/api/editor');
         if (res.ok) {
           const defaults = await res.json();
           const lawDefaults = defaults[lawKey];
@@ -2871,31 +2871,6 @@ export default function KnowledgeStation({ chapters, lawName, lawColor, lawKey }
         }
       } catch {
         // ignore fetch errors
-      }
-
-      // Step 3: Apply localStorage overrides (user edits take priority)
-      const stored = localStorage.getItem('physics-editor-data');
-      if (stored) {
-        try {
-          const editData = JSON.parse(stored);
-          const edited = editData[lawKey];
-          if (edited && Array.isArray(edited)) {
-            merged = merged.map((ch, i) => {
-              if (edited[i]) {
-                return {
-                  ...ch,
-                  text: edited[i].text ?? ch.text,
-                  speech: edited[i].speech ?? ch.speech,
-                  videoUrl: edited[i].videoUrl ?? ch.videoUrl,
-                  videoName: edited[i].videoName ?? ch.videoName,
-                };
-              }
-              return ch;
-            });
-          }
-        } catch {
-          // ignore parse errors
-        }
       }
 
       setMergedChapters(merged);

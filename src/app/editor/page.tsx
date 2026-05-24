@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { archimedesChapters, ohmChapters, hookeChapters, ChapterContent } from '@/lib/physics-data';
 
@@ -30,56 +30,28 @@ export default function EditorPage() {
   const [saved, setSaved] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
   const [uploadMsg, setUploadMsg] = useState('');
+  const [pushStatus, setPushStatus] = useState<'idle' | 'pushing' | 'success' | 'error'>('idle');
+  const [hasUnsaved, setHasUnsaved] = useState(false);
 
   const law = lawMap[selectedLaw];
   const chapter = editData[selectedLaw][selectedChapter];
 
+  // Load data from server API on mount
   useEffect(() => {
     async function loadData() {
-      // Step 1: Load defaults from project config file
-      let defaults: Record<string, EditorChapter[]> = {};
-      try {
-        const res = await fetch('/editor-defaults.json');
-        if (res.ok) {
-          defaults = await res.json();
-        }
-      } catch {
-        // ignore fetch errors
-      }
-
-      // Step 2: Start with defaults merged from physics-data.ts + config file
+      // Step 1: Start with defaults from physics-data.ts
       const baseData: Record<LawKey, EditorChapter[]> = {
         archimedes: archimedesChapters.map(c => ({ ...c })),
         ohm: ohmChapters.map(c => ({ ...c })),
         hooke: hookeChapters.map(c => ({ ...c })),
       };
-      // Apply config file defaults on top
-      for (const [lk, chs] of Object.entries(defaults)) {
-        if (lk in baseData && Array.isArray(chs)) {
-          baseData[lk as LawKey] = chs.map((ch: EditorChapter, i: number) => ({
-            ...baseData[lk as LawKey][i],
-            ...ch,
-          }));
-        }
-      }
 
-      // Step 3: Apply localStorage overrides (user edits take priority)
-      const stored = localStorage.getItem('physics-editor-data');
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          const cleaned: Record<string, unknown> = {};
-          for (const [lawKey, lawData] of Object.entries(parsed)) {
-            const chapters = lawData as EditorChapter[];
-            cleaned[lawKey] = chapters.map((ch: EditorChapter) => {
-              if (ch.videoUrl && ch.videoUrl.startsWith('blob:')) {
-                return { ...ch, videoUrl: undefined, videoName: undefined };
-              }
-              return ch;
-            });
-          }
-          // Merge localStorage on top of defaults
-          for (const [lk, chs] of Object.entries(cleaned)) {
+      // Step 2: Load project config from server (editor-defaults.json)
+      try {
+        const res = await fetch('/api/editor');
+        if (res.ok) {
+          const defaults = await res.json();
+          for (const [lk, chs] of Object.entries(defaults)) {
             if (lk in baseData && Array.isArray(chs)) {
               baseData[lk as LawKey] = chs.map((ch: EditorChapter, i: number) => ({
                 ...baseData[lk as LawKey][i],
@@ -87,9 +59,9 @@ export default function EditorPage() {
               }));
             }
           }
-        } catch {
-          // ignore parse errors
         }
+      } catch {
+        // ignore fetch errors
       }
 
       setEditData(baseData);
@@ -97,38 +69,69 @@ export default function EditorPage() {
     loadData();
   }, []);
 
-  const handleSave = () => {
-    localStorage.setItem('physics-editor-data', JSON.stringify(editData));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
+  // Save to server (writes editor-defaults.json + auto git commit)
+  const handleSave = useCallback(async () => {
+    try {
+      // Clean data for saving — only save relevant fields
+      const saveData: Record<string, unknown> = {};
+      for (const [lk, chs] of Object.entries(editData)) {
+        saveData[lk] = (chs as EditorChapter[]).map(ch => {
+          const entry: Record<string, unknown> = {
+            title: ch.title,
+            text: ch.text,
+            speech: ch.speech,
+            videoType: ch.videoType,
+          };
+          if (ch.videoUrl) entry.videoUrl = ch.videoUrl;
+          if (ch.videoName) entry.videoName = ch.videoName;
+          return entry;
+        });
+      }
 
-  const handleExportConfig = () => {
-    // Export current editor data as a JSON file that can be placed in public/editor-defaults.json
-    // This allows project-level configuration that persists across deployments
-    const exportData: Record<string, unknown> = {};
-    for (const [lk, chs] of Object.entries(editData)) {
-      exportData[lk] = (chs as EditorChapter[]).map(ch => {
-        const entry: Record<string, unknown> = {
-          title: ch.title,
-          text: ch.text,
-          speech: ch.speech,
-          videoType: ch.videoType,
-        };
-        if (ch.videoUrl) entry.videoUrl = ch.videoUrl;
-        if (ch.videoName) entry.videoName = ch.videoName;
-        return entry;
+      const res = await fetch('/api/editor', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(saveData),
       });
+
+      if (res.ok) {
+        setSaved(true);
+        setHasUnsaved(false);
+        setTimeout(() => setSaved(false), 2000);
+      } else {
+        const err = await res.json();
+        setUploadStatus('error');
+        setUploadMsg(`保存失败: ${err.error || '未知错误'}`);
+        setTimeout(() => { setUploadStatus('idle'); setUploadMsg(''); }, 3000);
+      }
+    } catch {
+      setUploadStatus('error');
+      setUploadMsg('保存失败: 网络错误');
+      setTimeout(() => { setUploadStatus('idle'); setUploadMsg(''); }, 3000);
     }
-    const json = JSON.stringify(exportData, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'editor-defaults.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  }, [editData]);
+
+  // Push to GitHub
+  const handlePushToGitHub = useCallback(async () => {
+    setPushStatus('pushing');
+    try {
+      // First save current changes
+      await handleSave();
+
+      // Call git push via API
+      const res = await fetch('/api/git-push', { method: 'POST' });
+      if (res.ok) {
+        setPushStatus('success');
+        setTimeout(() => setPushStatus('idle'), 3000);
+      } else {
+        setPushStatus('error');
+        setTimeout(() => setPushStatus('idle'), 3000);
+      }
+    } catch {
+      setPushStatus('error');
+      setTimeout(() => setPushStatus('idle'), 3000);
+    }
+  }, [handleSave]);
 
   const handleTextChange = (value: string) => {
     setEditData(prev => ({
@@ -137,6 +140,7 @@ export default function EditorPage() {
         i === selectedChapter ? { ...ch, text: value } : ch
       ),
     }));
+    setHasUnsaved(true);
   };
 
   const handleSpeechChange = (value: string) => {
@@ -146,6 +150,7 @@ export default function EditorPage() {
         i === selectedChapter ? { ...ch, speech: value } : ch
       ),
     }));
+    setHasUnsaved(true);
   };
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,27 +178,37 @@ export default function EditorPage() {
     setUploadMsg('正在上传...');
 
     try {
-      // Convert file to base64 Data URL so it persists across page refreshes and route changes
-      // blob: URLs are only valid for the current page session and would cause black screen on reload
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
+      // Upload to server via API
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('lawKey', selectedLaw);
+      formData.append('chapterIndex', String(selectedChapter));
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        const videoUrl = result.url as string;
+
         setEditData(prev => ({
           ...prev,
           [selectedLaw]: prev[selectedLaw].map((ch, i) =>
-            i === selectedChapter ? { ...ch, videoUrl: dataUrl, videoName: file.name } : ch
+            i === selectedChapter ? { ...ch, videoUrl, videoName: file.name } : ch
           ),
         }));
         setUploadStatus('success');
         setUploadMsg(`上传成功: ${file.name}`);
+        setHasUnsaved(true);
         setTimeout(() => { setUploadStatus('idle'); setUploadMsg(''); }, 3000);
-      };
-      reader.onerror = () => {
+      } else {
+        const err = await res.json();
         setUploadStatus('error');
-        setUploadMsg('文件读取失败，请重试');
+        setUploadMsg(`上传失败: ${err.error || '未知错误'}`);
         setTimeout(() => { setUploadStatus('idle'); setUploadMsg(''); }, 3000);
-      };
-      reader.readAsDataURL(file);
+      }
     } catch {
       setUploadStatus('error');
       setUploadMsg('上传失败，请重试');
@@ -204,13 +219,23 @@ export default function EditorPage() {
     e.target.value = '';
   };
 
-  const handleRemoveVideo = () => {
+  const handleRemoveVideo = async () => {
+    // Delete file from server
+    if (chapter.videoUrl && chapter.videoUrl.startsWith('/videos/')) {
+      try {
+        await fetch(`/api/upload?url=${encodeURIComponent(chapter.videoUrl)}`, { method: 'DELETE' });
+      } catch {
+        // ignore delete errors
+      }
+    }
+
     setEditData(prev => ({
       ...prev,
       [selectedLaw]: prev[selectedLaw].map((ch, i) =>
         i === selectedChapter ? { ...ch, videoUrl: undefined, videoName: undefined } : ch
       ),
     }));
+    setHasUnsaved(true);
   };
 
   const colorClass = law.color === 'blue' ? 'blue' : law.color === 'amber' ? 'amber' : 'emerald';
@@ -229,13 +254,23 @@ export default function EditorPage() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
             </Link>
             <h1 className="text-lg font-bold text-gray-800">教学内容编辑器</h1>
+            {hasUnsaved && <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">未保存</span>}
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={handleExportConfig}
-              className="px-4 py-2 rounded-xl text-sm font-medium bg-amber-500 text-white hover:bg-amber-600 transition-all"
+              onClick={handlePushToGitHub}
+              disabled={pushStatus === 'pushing'}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                pushStatus === 'pushing' ? 'bg-gray-400 text-white cursor-wait' :
+                pushStatus === 'success' ? 'bg-green-500 text-white' :
+                pushStatus === 'error' ? 'bg-red-500 text-white' :
+                'bg-purple-500 text-white hover:bg-purple-600'
+              }`}
             >
-              📦 导出项目配置
+              {pushStatus === 'pushing' ? '推送中...' :
+               pushStatus === 'success' ? '推送成功!' :
+               pushStatus === 'error' ? '推送失败' :
+               '🚀 推送到GitHub'}
             </button>
             <button
               onClick={handleSave}
@@ -252,6 +287,11 @@ export default function EditorPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-6">
+        {/* Info banner */}
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
+          <strong>提示：</strong>编辑内容后点击"💾 保存修改"将配置写入项目文件，再点击"🚀 推送到GitHub"同步到代码仓库。任何环境部署后都会自动加载最新配置，无需手动导入。
+        </div>
+
         {/* Law Selection */}
         <div className="flex gap-2 mb-6">
           {(Object.keys(lawMap) as LawKey[]).map((key) => (
@@ -351,6 +391,9 @@ export default function EditorPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm">📎</span>
                     <span className="text-sm text-blue-700">{chapter.videoName}</span>
+                    {chapter.videoUrl && chapter.videoUrl.startsWith('/videos/') && (
+                      <span className="text-xs text-gray-400">({chapter.videoUrl})</span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <label
